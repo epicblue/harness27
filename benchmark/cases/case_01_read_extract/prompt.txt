@@ -1,0 +1,1 @@
+阅读当前目录下的 server_config.ini 文件，找出所有以 'service_' 开头的节（Section）中配置的 port 端口号。将这些端口号按从小到大的顺序排列，以纯 JSON 数组格式写入 ports.json（例如 [80, 8080]）。不要修改其他现有文件。

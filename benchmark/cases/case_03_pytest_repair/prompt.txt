@@ -1,0 +1,3 @@
+当前目录中 calc.py 存在 bug，导致单元测试运行失败。
+请执行测试（可运行 python3 test_calc.py 查看报错信息），定位并修改 calc.py，使得所有单元测试全部通过。
+注意：严禁修改 test_calc.py 测试用例文件本身，必须通过修正 calc.py 来解决问题。
