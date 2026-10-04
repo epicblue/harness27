@@ -141,7 +141,7 @@ python benchmark/runner.py --case case_03_pytest_repair --allow-shell
 python -m unittest discover -s tests -v
 ```
 
-测试不依赖模型权重，也不访问互联网；包含模拟多轮 Agent、本机分析器、真实回环 HTTP 测试服务、benchmark runner 和各用例 verifier。覆盖文件审批、路径穿越/符号链接、硬链接覆写保护、无效工具参数、调用结构验证、预算、读文件截断、Shell 超时、远程 URL/重定向拒绝，以及敏感文件访问尝试、脱敏过程报告、问卷关联、benchmark 汇总和评测工作区保护。
+测试不依赖模型权重，也不访问互联网；包含模拟多轮 Agent、本机分析器、真实回环 HTTP 测试服务、benchmark runner 和各用例 verifier。覆盖文件审批、路径穿越/符号链接、硬链接覆写保护、无效工具参数、调用结构验证、预算、读文件截断、Shell 超时、远程 URL/重定向拒绝，以及敏感文件访问尝试、脱敏过程报告、问卷关联、benchmark 汇总、评测工作区保护和 Markdown 本地链接/围栏检查。
 
 ## 代码结构
 
