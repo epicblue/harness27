@@ -76,6 +76,19 @@ class BenchmarkRunnerTests(unittest.TestCase):
         self.assertEqual(list((runner.DATA_ROOT / "workspaces").glob(
             "case_04_csv_reconciliation-trial-01-*")), [])
 
+    def test_inventory_case_has_a_complete_testable_user_story(self):
+        metadata = self.cases["case_05_warehouse_replenishment"].metadata
+        story = metadata["user_story"]
+        self.assertEqual(set(story), {"as_a", "i_want", "so_that"})
+        self.assertTrue(all(isinstance(value, str) and value.strip()
+                            for value in story.values()))
+        criteria = metadata["acceptance_criteria"]
+        self.assertEqual([item["id"] for item in criteria],
+                         ["AC-01", "AC-02", "AC-03", "AC-04", "AC-05"])
+        self.assertTrue(all(item.get("requirement") for item in criteria))
+        self.assertTrue(metadata["out_of_scope"])
+        self.assertEqual(metadata["shell"], "disabled")
+
     def test_inventory_replenishment_case_runs_without_shell(self):
         rows = [
             {"sku": "SKU-A", "on_hand": 12, "open_order_units": 13,

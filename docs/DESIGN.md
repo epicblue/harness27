@@ -635,6 +635,8 @@ benchmark/
 - `skills`：非空且不重复的字符串列表；允许跨 case 重叠。
 - `shell`：`disabled` / `optional` / `required`。
 
+可选 `user_story`、`acceptance_criteria`、`out_of_scope` 用于保留完整业务需求和验收边界；当前库存补货 case 将每条 AC 映射到确定性 verifier 与测试。Runner 不解释这些字段，但整个 `case.json` 已包含在 case fingerprint 中，变更会标记为新的评测版本。
+
 Runner 仅接受 `cases/` 的直接 `case_*` 子目录，拒绝遍历路径和 case 目录、入口 prompt/verifier/fixture root 的 symlink。fixture 内 symlink 和特殊文件也被拒绝。加载 verifier 时在任何模型/工具执行前导入所有用例 verifier，并把当前 Python 函数对象用于本次运行，避免简单的“先改 verifier 文件”作弊路径；这不是保护本机不可信 Shell 的隔离机制。
 
 ### 6.2 一次 trial 的数据流

@@ -1,3 +1,4 @@
+import json
 import re
 from pathlib import Path
 import unittest
@@ -58,6 +59,20 @@ class DocumentationTests(unittest.TestCase):
             for case_name in case_names:
                 with self.subTest(document=doc_path.name, case=case_name):
                     self.assertIn(case_name, content)
+
+    def test_inventory_story_acceptance_criteria_match_user_guide(self):
+        case_dir = ROOT / "benchmark" / "cases" / "case_05_warehouse_replenishment"
+        metadata = json.loads((case_dir / "case.json").read_text(encoding="utf-8"))
+        story = metadata["user_story"]
+        self.assertTrue(all(story.get(field) for field in ("as_a", "i_want", "so_that")))
+        prompt = (case_dir / "prompt.txt").read_text(encoding="utf-8")
+        self.assertIn("available_units = on_hand + open_order_units", prompt)
+        self.assertIn("max(target_stock - available_units, 0)", prompt)
+        use_cases = (ROOT / "docs" / "USE_CASES.md").read_text(encoding="utf-8")
+        for criterion in metadata["acceptance_criteria"]:
+            with self.subTest(criterion=criterion["id"]):
+                self.assertIn(criterion["id"], use_cases)
+                self.assertTrue(criterion["requirement"])
 
 
 if __name__ == "__main__":

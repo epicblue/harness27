@@ -1,10 +1,11 @@
-根据当前目录下的 stock_levels.csv 和 purchase_orders.csv，生成 reorder_plan.json。
+我是仓库运营专员，每周下采购申请前要核对现有库存和仍在途的采购数量，整理一份供人工审核的补货建议，避免缺货，也避免重复订购已经到货或仍在路上的商品。请根据当前目录的 stock_levels.csv 和 purchase_orders.csv 生成 reorder_plan.json；只生成建议，不要实际下单。
 
-补货规则：
+验收规则：
 1. 对每个库存 SKU，只汇总 purchase_orders.csv 中 sku 完全匹配且 status 严格等于 open 的 quantity；received、cancelled 等其他状态不计入。
 2. purchase_orders.csv 中库存表没有的 SKU 忽略。
 3. available_units = on_hand + open_order_units；recommended_order_qty = max(target_stock - available_units, 0)。所有数量都是整数，不需要按包装倍数取整，也不要增加安全库存或预测销量。
-4. 输出只包含 recommended_order_qty 大于 0 的 SKU；每个 SKU 最多一行，按 sku 升序排列。
+4. 只输出 recommended_order_qty 大于 0 的 SKU；每个 SKU 最多一行，按 sku 升序排列。
 5. reorder_plan.json 必须是 JSON 数组，每行必须且只能包含 sku、on_hand、open_order_units、available_units、target_stock、recommended_order_qty 六个字段，数量字段使用 JSON 整数。
+6. 保持输入文件不变；只新增 reorder_plan.json，不创建其他文件或目录。
 
-只新增 reorder_plan.json；不要修改、删除或新增其他文件。完成前检查输入汇总、补货数量、排序和 JSON 格式。
+完成前检查输入汇总、建议数量、唯一 SKU、排序、字段和 JSON 格式。供应商包装倍数、需求预测、安全库存、到货日期推演和实际采购下单均不在本次任务范围内。

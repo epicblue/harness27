@@ -94,6 +94,8 @@ Fixture 复制会拒绝符号链接，忽略 Python `__pycache__`/`.pyc`/`.pyo` 
 | `case_04_csv_reconciliation` | `data_transformation` / medium | `csv_parsing`、`multi_file_reasoning`、`aggregation`、`numeric_accuracy`、`structured_output` | 连接发票与付款 CSV，汇总 settled 付款，忽略 pending/void 与无匹配 ID，输出排序后的 JSON。Verifier 校验金额、状态、输入 hash 和文件集合。 | 禁用 |
 | `case_05_warehouse_replenishment` | `operations_planning` / medium | `csv_parsing`、`multi_file_reasoning`、`inventory_planning`、`constraint_following`、`structured_output` | 汇总库存与 open 采购单，忽略已收货/取消/未知 SKU，生成有序补货建议。Verifier 检查精确整数、输入 hash 和输出文件集合。 | 禁用 |
 
+`case_05_warehouse_replenishment` 同时示范了完整用户故事：`case.json` 内含 `as_a` / `i_want` / `so_that`、可测试验收标准（AC-01 至 AC-05）和范围外事项；`prompt.txt` 给模型实际任务，独立 verifier 与单元测试落实验收标准。因为 `case.json` 和 prompt 都参与 case fingerprint，故事/需求变更会形成新的评测版本。故事的完整业务说明见[使用场景实例](USE_CASES.md)。
+
 `difficulty` 是仓库内的粗分级，不是校准过的量表；`skills` 是标签，不保证彼此独立。标签的类别数和 case 数很小，不能将按技能的结果相加成统一“能力总分”。
 
 ## 5. 评分与报告解读
@@ -167,6 +169,7 @@ benchmark/cases/case_06_<topic>/
 - `difficulty` 必须是 `easy`、`medium` 或 `hard`；`skills` 必须是非空且不重复的字符串数组。
 - `shell` 只能是 `disabled`、`optional`、`required`。默认选 `disabled`；仅确实需要命令执行才设 optional/required。
 - 提示词应描述可验证的用户目标，尽量避免隐含歧义；fixture 应自包含且不含真实客户数据、凭据或个人信息。
+- 如任务来自业务流程，可在 `case.json` 额外写 `user_story`（`as_a` / `i_want` / `so_that`）、`acceptance_criteria` 和 `out_of_scope`。Runner 不解释这些可选字段，但 `case.json` 会参与 fingerprint；把模型实际执行的请求仍写在 `prompt.txt`，并让每条验收标准对应 verifier 和自动化测试。
 - `verify.py` 必须定义 `verify(workspace_dir, trace_events=None)` 并返回布尔结果。验证独立产物、原输入是否改变、禁止操作是否出现；不要依赖模型自述。
 - 如安全约束取决于工具行为，使用 trace 的实际工具调用记录，而非只搜模型最终回答。Agent tool event 形态包含 `name`、`arguments`、`result`。
 - 固定基准文件 hash，避免被评测任务修改的测试/输入文件同时被 verifier 当作正确基准。

@@ -120,7 +120,26 @@ Verifier 校验 JSON 字段集合、金额、付款状态、排序、重复 invo
 
 ## 场景四：根据库存与在途采购制定补货清单
 
-**实际需求：** 仓库运营人员结合当前库存和未到货采购单，找出需要补货的 SKU，避免把已收货或已取消的采购单重复算作在途库存。
+**完整用户故事：**
+
+> 作为仓库运营专员，我想在每周提交采购申请前，把当前库存与仍在途的采购数量合并，生成一份供人工审核的补货清单，以便降低缺货风险，同时避免重复订购已经到货或已在途的商品。
+
+- **触发条件：** 每周采购申请审核前。
+- **前置条件：** 工作区提供 `stock_levels.csv`（现有库存与目标库存）和 `purchase_orders.csv`（采购数量与状态）。本用例中的文件是合成数据。
+- **主要流程：** 读取两份 CSV；只将状态严格等于 `open` 且 SKU 匹配的采购数量计入在途量；计算可用量和建议补货量；输出供人工审核的 JSON 清单。
+- **验收标准：**
+  - **AC-01：** 生成合法的 `reorder_plan.json` 数组，每行只含六个约定字段，数量使用整数。
+  - **AC-02：** 只累计匹配 SKU 的 `open` 采购单；忽略已收货、已取消和未知 SKU。
+  - **AC-03：** `available_units = on_hand + open_order_units`，`recommended_order_qty = max(target_stock - available_units, 0)`。
+  - **AC-04：** 只输出建议量大于零的 SKU；不重复且按 SKU 升序排列。
+  - **AC-05：** 不修改输入；只新增 `reorder_plan.json`，不创建其他文件或目录。
+- **不在范围内：** 需求预测、安全库存、供应商包装倍数、到货日期推演，以及连接 ERP 或实际下单。
+
+这些验收标准也记录在用例的 `case.json`，该文件参与 benchmark case fingerprint。单元测试直接验证 verifier 的正负边界，并通过 FakeClient 检查 Runner 的完整执行链；它们是离线模拟，不代表真实模型结果：
+
+```bash
+python -m unittest discover -s tests -v
+```
 
 ```bash
 python benchmark/runner.py \

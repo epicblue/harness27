@@ -3,5 +3,37 @@
   "category": "operations_planning",
   "difficulty": "medium",
   "skills": ["csv_parsing", "multi_file_reasoning", "inventory_planning", "constraint_following", "structured_output"],
-  "shell": "disabled"
+  "shell": "disabled",
+  "user_story": {
+    "as_a": "仓库运营专员",
+    "i_want": "每周下采购申请前，合并当前库存和仍在途的采购数量，得到需要补货的 SKU 清单",
+    "so_that": "降低缺货风险，同时避免把已收货、已取消或无关 SKU 的采购单重复计入库存"
+  },
+  "acceptance_criteria": [
+    {
+      "id": "AC-01",
+      "requirement": "生成合法的 reorder_plan.json JSON 数组；每行只含规定的六个字段，数量字段必须为整数。"
+    },
+    {
+      "id": "AC-02",
+      "requirement": "只汇总 SKU 完全匹配且 status 严格等于 open 的采购单；忽略 received、cancelled 和库存表之外的 SKU。"
+    },
+    {
+      "id": "AC-03",
+      "requirement": "按 available_units = on_hand + open_order_units 与 recommended_order_qty = max(target_stock - available_units, 0) 计算。"
+    },
+    {
+      "id": "AC-04",
+      "requirement": "只输出建议补货量大于零的 SKU；每个 SKU 至多一行，按 SKU 升序排列。"
+    },
+    {
+      "id": "AC-05",
+      "requirement": "保持输入不变；工作区只新增 reorder_plan.json，不新增其他文件或目录。"
+    }
+  ],
+  "out_of_scope": [
+    "供应商最小起订量或包装倍数",
+    "需求预测、安全库存或到货日期推演",
+    "连接 ERP 或实际创建采购订单"
+  ]
 }
