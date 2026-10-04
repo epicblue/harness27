@@ -4,7 +4,7 @@
 
 > 这是 Agent harness，不负责训练、加载模型权重或 GPU 推理；仓库另含一套早期本地 benchmark runner（见下文），不是完整行业基准。权重加载和推理由 vLLM、Ollama、llama.cpp 等独立服务负责。模型规模不被客户端强制校验，实际使用的 27B 模型由服务端决定。
 
-完整文档： [使用说明](docs/USER_GUIDE.md) · [部署与兼容性](docs/DEPLOYMENT_GUIDE.md) · [故障排查](docs/TROUBLESHOOTING.md) · [安全部署](docs/SECURITY_OPERATIONS.md) · [使用场景实例](docs/USE_CASES.md) · [能力评测手册](docs/BENCHMARK_GUIDE.md) · [系统设计](docs/DESIGN.md) · [文档索引](docs/README.md)
+完整文档： [使用说明](docs/USER_GUIDE.md) · [部署与兼容性](docs/DEPLOYMENT_GUIDE.md) · [故障排查](docs/TROUBLESHOOTING.md) · [安全部署](docs/SECURITY_OPERATIONS.md) · [使用场景实例](docs/USE_CASES.md) · [能力评测手册](docs/BENCHMARK_GUIDE.md) · [流程改进方案](docs/PROCESS_IMPROVEMENT.md) · [系统设计](docs/DESIGN.md) · [文档索引](docs/README.md)
 
 ## 快速开始
 
