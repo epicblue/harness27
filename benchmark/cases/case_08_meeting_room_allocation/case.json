@@ -1,0 +1,40 @@
+{
+  "title": "按容量、设备和现有预订分配会议室",
+  "category": "operations_planning",
+  "difficulty": "medium",
+  "skills": ["csv_parsing", "policy_lookup", "interval_scheduling", "constraint_satisfaction", "deterministic_tiebreaking", "structured_output"],
+  "shell": "disabled",
+  "user_story": {
+    "as_a": "活动运营协调员",
+    "i_want": "根据会议人数、所需设备、房间容量和现有预订，为合成会议请求生成无冲突的房间分配计划",
+    "so_that": "团队可以快速审核可行安排，并及时发现当前资源下无法安排的请求"
+  },
+  "acceptance_criteria": [
+    {
+      "id": "AC-01",
+      "requirement": "每个输入会议恰好对应一条 JSON 记录，字段只能是 meeting_id、room_id、status、reason。"
+    },
+    {
+      "id": "AC-02",
+      "requirement": "已分配房间必须满足人数容量和全部所需设备，且不会与现有预订或其他已分配会议时间重叠。"
+    },
+    {
+      "id": "AC-03",
+      "requirement": "按 room_allocation_policy.json 规定的开始时间和 meeting_id 顺序处理；每次选择容量最小的可用房间，同容量按 room_id 升序。"
+    },
+    {
+      "id": "AC-04",
+      "requirement": "无可行房间的会议必须标为 unassigned、room_id 为空字符串、reason 为 no_eligible_room；已分配记录的 reason 为空字符串。"
+    },
+    {
+      "id": "AC-05",
+      "requirement": "只新增 room_plan.json，保持所有输入不变；不调用 Shell、网络、日历系统或外部服务。"
+    }
+  ],
+  "out_of_scope": [
+    "创建、修改或删除真实日历预订",
+    "发送邀请、联系参会者或确认出席",
+    "更改房间资源、容量或设备信息",
+    "基于未提供的信息推断会议需求"
+  ]
+}

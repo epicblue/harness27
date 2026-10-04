@@ -1,0 +1,11 @@
+我是活动运营协调员，需要为一批会议请求生成供人工审核的会议室分配计划。请读取 meeting_requests.csv、room_inventory.json、existing_bookings.csv 和 room_allocation_policy.json，只新增 room_plan.json；不要更改输入。
+
+分配规则：
+1. 按 room_allocation_policy.json 的 meeting_order 对请求排序；对每个会议，候选房间必须容量不小于 attendees，并包含 required_amenities 中的全部设备。
+2. 候选房间不得与 existing_bookings.csv 中同一房间的预订重叠，也不得与本计划中此前已分配到该房间的会议重叠。时间区间采用左闭右开规则：一个会议恰好在另一个结束时开始，不算重叠。
+3. 从可行房间中按 policy 的 room_choice_order 选取，即容量升序、再按 room_id 升序。会议按 policy 顺序逐个分配，已选房间要立即计入后续冲突检查。
+4. 若没有可行房间，仍输出该会议：status 为 "unassigned"，room_id 为空字符串，reason 为 "no_eligible_room"。已分配会议的 status 为 "assigned"，reason 为空字符串。
+5. 输出必须是 JSON 数组，每条记录只含 meeting_id、room_id、status、reason 四个字符串字段，并保持处理顺序。
+6. 只写 room_plan.json；不要调用 Shell、联网、访问或修改日历、联系参会者、创建其他文件。
+
+完成前核对会议数量、设备与容量、现有预订、左闭右开时间边界、重复分配冲突、确定性选房顺序及未分配原因。所有数据都是合成测试数据。

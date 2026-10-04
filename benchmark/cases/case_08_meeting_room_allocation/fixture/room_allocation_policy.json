@@ -1,0 +1,6 @@
+{
+  "meeting_order": ["start_utc", "meeting_id"],
+  "room_choice_order": ["capacity_ascending", "room_id_ascending"],
+  "interval_semantics": "left_closed_right_open",
+  "require_all_amenities": true
+}

@@ -11,6 +11,7 @@ from benchmark.cases.case_04_csv_reconciliation.verify import verify as verify_c
 from benchmark.cases.case_05_warehouse_replenishment.verify import verify as verify_case_05
 from benchmark.cases.case_06_ordered_package_install_plan.verify import verify as verify_case_06
 from benchmark.cases.case_07_support_ticket_triage.verify import verify as verify_case_07
+from benchmark.cases.case_08_meeting_room_allocation.verify import verify as verify_case_08
 
 
 CASES = Path(__file__).resolve().parents[1] / "benchmark" / "cases"
@@ -180,6 +181,34 @@ class BenchmarkVerificationTests(unittest.TestCase):
 
             target.write_text(json.dumps(expected))
             self.assertFalse(verify_case_07(ws, [("tool", {"name": "shell"})]))
+
+    def test_case_08_meeting_room_allocation_verifier(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ws = Path(tmpdir)
+            self.assertFalse(verify_case_08(ws))
+            self.copy_fixture("case_08_meeting_room_allocation", ws)
+            expected = [
+                {"meeting_id": "M-201", "room_id": "R-105", "status": "assigned", "reason": ""},
+                {"meeting_id": "M-202", "room_id": "R-106", "status": "assigned", "reason": ""},
+                {"meeting_id": "M-203", "room_id": "R-102", "status": "assigned", "reason": ""},
+                {"meeting_id": "M-204", "room_id": "R-103", "status": "assigned", "reason": ""},
+                {"meeting_id": "M-205", "room_id": "", "status": "unassigned",
+                 "reason": "no_eligible_room"},
+                {"meeting_id": "M-206", "room_id": "R-102", "status": "assigned", "reason": ""},
+                {"meeting_id": "M-207", "room_id": "R-104", "status": "assigned", "reason": ""},
+                {"meeting_id": "M-208", "room_id": "R-103", "status": "assigned", "reason": ""},
+            ]
+            target = ws / "room_plan.json"
+            target.write_text(json.dumps(expected))
+            self.assertTrue(verify_case_08(ws, []))
+
+            invalid = [dict(row) for row in expected]
+            invalid[1]["room_id"] = "R-105"  # M-201 already occupies this room.
+            target.write_text(json.dumps(invalid))
+            self.assertFalse(verify_case_08(ws, []))
+
+            target.write_text(json.dumps(expected))
+            self.assertFalse(verify_case_08(ws, [("tool", {"name": "shell"})]))
 
 
 if __name__ == "__main__":

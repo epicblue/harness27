@@ -1,0 +1,10 @@
+{
+  "rooms": [
+    {"room_id": "R-101", "capacity": 4, "amenities": ["display"]},
+    {"room_id": "R-102", "capacity": 8, "amenities": ["display", "whiteboard"]},
+    {"room_id": "R-103", "capacity": 6, "amenities": ["display", "whiteboard"]},
+    {"room_id": "R-104", "capacity": 12, "amenities": ["display", "video"]},
+    {"room_id": "R-105", "capacity": 6, "amenities": ["display", "video"]},
+    {"room_id": "R-106", "capacity": 6, "amenities": ["display"]}
+  ]
+}

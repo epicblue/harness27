@@ -285,6 +285,54 @@ python benchmark/runner.py \
 
 该案例只生成供人工审核的分派建议，不是真实工单操作，也没有在本次改动中对 27B 模型进行实测。运营落地前还应确认组织时区、节假日 SLA、重复工单及逾期升级规则是否需要纳入政策。
 
+## 场景九：为会议请求分配可用会议室
+
+**完整用户故事：**
+
+> 作为活动运营协调员，我想根据会议人数、所需设备、房间容量和现有预订，为合成会议请求生成无冲突的房间分配计划，以便团队可以快速审核可行安排，并及时发现当前资源下无法安排的请求。
+
+- **触发条件：** 活动团队收到一批需要排期的会议请求。
+- **前置条件：** 工作区提供 `meeting_requests.csv`、`room_inventory.json`、`existing_bookings.csv` 和 `room_allocation_policy.json`。所有会议、房间和预订均为合成测试数据，时间均为 UTC。
+- **主要流程：** 按政策规定的开始时间及 meeting ID 处理会议；候选房间需满足人数容量、全部所需设备，并且不与现有预订或已分配会议冲突；选择容量最小的可用房间，同容量按房间 ID 升序。
+- **验收标准：**
+  - **AC-01：** 每个请求恰好有一条结果，字段仅为 `meeting_id`、`room_id`、`status`、`reason`。
+  - **AC-02：** 已分配房间满足容量和设备要求，且不与现有预订或其他分配重叠；时间区间采用左闭右开语义。
+  - **AC-03：** 处理顺序为开始时间、meeting ID 升序；对每个会议选择容量最小的可行房间，同容量按 room ID 升序。
+  - **AC-04：** 无可行房间时输出 `status="unassigned"`、空 `room_id` 和 `reason="no_eligible_room"`；已分配项的 `reason` 为空字符串。
+  - **AC-05：** 只新增 `room_plan.json`，不修改输入、不调用 Shell 或网络、不访问或修改真实日历、不联系参会者。
+- **不在范围内：** 创建真实日历事件、发送邀请、修改房间资源或推断未提供的会议需求。
+
+先运行离线单元测试（FakeClient，不调用模型）：
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+若已配置本机模型服务，可运行禁用 Shell 的 trial：
+
+```bash
+python benchmark/runner.py \
+  --model local-27b \
+  --case case_08_meeting_room_allocation
+```
+
+期望的 `room_plan.json`：
+
+```json
+[
+  {"meeting_id": "M-201", "room_id": "R-105", "status": "assigned", "reason": ""},
+  {"meeting_id": "M-202", "room_id": "R-106", "status": "assigned", "reason": ""},
+  {"meeting_id": "M-203", "room_id": "R-102", "status": "assigned", "reason": ""},
+  {"meeting_id": "M-204", "room_id": "R-103", "status": "assigned", "reason": ""},
+  {"meeting_id": "M-205", "room_id": "", "status": "unassigned", "reason": "no_eligible_room"},
+  {"meeting_id": "M-206", "room_id": "R-102", "status": "assigned", "reason": ""},
+  {"meeting_id": "M-207", "room_id": "R-104", "status": "assigned", "reason": ""},
+  {"meeting_id": "M-208", "room_id": "R-103", "status": "assigned", "reason": ""}
+]
+```
+
+该用例只生成供人工审核的静态建议，不创建或更新真实日历事件；fixture 是合成数据，本次改动也没有进行 27B 模型实测。
+
 ## 把业务需求写成好任务
 
 无论是运营、数据还是代码任务，建议把 prompt 写成一个可执行验收清单：
@@ -310,4 +358,5 @@ python benchmark/runner.py \
 | 库存与在途采购核算 | `benchmark/runner.py --case case_05_warehouse_replenishment` | 否 | 是 |
 | 多软件包依赖顺序计划（仅计划，不安装） | `benchmark/runner.py --case case_06_ordered_package_install_plan` | 否 | 是，检查依赖顺序和版本 |
 | 支持工单分派（合成数据，仅生成清单） | `benchmark/runner.py --case case_07_support_ticket_triage` | 否 | 是，检查政策映射与 SLA |
+| 会议室分配（合成数据，仅生成计划） | `benchmark/runner.py --case case_08_meeting_room_allocation` | 否 | 是，检查容量、设备与预订冲突 |
 | 编辑代码并调用测试命令 | 隔离环境中的 case 03 或 CLI | 是 | case 03 有固定 verifier |

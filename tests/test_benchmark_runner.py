@@ -37,7 +37,7 @@ class BenchmarkRunnerTests(unittest.TestCase):
         self.cases = {case.name: case for case in runner.discover_cases()}
 
     def test_discovery_and_path_traversal_rejection(self):
-        self.assertEqual(len(self.cases), 7)
+        self.assertEqual(len(self.cases), 8)
         for case in self.cases.values():
             self.assertEqual(len(case.fingerprint), 64)
         with self.assertRaises(ValueError):
@@ -196,6 +196,48 @@ class BenchmarkRunnerTests(unittest.TestCase):
         ])
         row = runner.run_case(
             self.cases["case_07_support_ticket_triage"], client, "test-run", 1,
+            max_steps=4, allow_shell=True,
+        )
+        self.assertEqual(row["status"], "passed")
+        self.assertEqual(row["agent_status"], "completed")
+        self.assertEqual(row["tool_names"], {"write_file": 1})
+        schemas = {item["function"]["name"] for item in client.requests[0][1]}
+        self.assertNotIn("shell", schemas)
+
+    def test_meeting_room_case_has_a_complete_testable_user_story(self):
+        metadata = self.cases["case_08_meeting_room_allocation"].metadata
+        story = metadata["user_story"]
+        self.assertEqual(set(story), {"as_a", "i_want", "so_that"})
+        self.assertTrue(all(isinstance(value, str) and value.strip()
+                            for value in story.values()))
+        criteria = metadata["acceptance_criteria"]
+        self.assertEqual([item["id"] for item in criteria],
+                         ["AC-01", "AC-02", "AC-03", "AC-04", "AC-05"])
+        self.assertTrue(all(item.get("requirement") for item in criteria))
+        self.assertTrue(metadata["out_of_scope"])
+        self.assertEqual(metadata["shell"], "disabled")
+
+    def test_meeting_room_allocation_runner_path_without_shell(self):
+        rows = [
+            {"meeting_id": "M-201", "room_id": "R-105", "status": "assigned", "reason": ""},
+            {"meeting_id": "M-202", "room_id": "R-106", "status": "assigned", "reason": ""},
+            {"meeting_id": "M-203", "room_id": "R-102", "status": "assigned", "reason": ""},
+            {"meeting_id": "M-204", "room_id": "R-103", "status": "assigned", "reason": ""},
+            {"meeting_id": "M-205", "room_id": "", "status": "unassigned",
+             "reason": "no_eligible_room"},
+            {"meeting_id": "M-206", "room_id": "R-102", "status": "assigned", "reason": ""},
+            {"meeting_id": "M-207", "room_id": "R-104", "status": "assigned", "reason": ""},
+            {"meeting_id": "M-208", "room_id": "R-103", "status": "assigned", "reason": ""},
+        ]
+        client = FakeClient([
+            call("write-1", "write_file", {
+                "path": "room_plan.json",
+                "content": json.dumps(rows),
+            }),
+            {"role": "assistant", "content": "已生成供人工审核的会议室分配计划。"},
+        ])
+        row = runner.run_case(
+            self.cases["case_08_meeting_room_allocation"], client, "test-run", 1,
             max_steps=4, allow_shell=True,
         )
         self.assertEqual(row["status"], "passed")
