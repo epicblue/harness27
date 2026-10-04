@@ -1,0 +1,8 @@
+请根据当前目录的 invoices.csv 和 payments.csv 生成 reconciliation.json。输出必须是 JSON 数组，每张发票一条记录，按 invoice_id 升序排列；每条记录只包含 invoice_id、customer、billed_amount、paid_amount、outstanding_amount、status 六个字段。
+
+规则：
+1. paid_amount 是该发票所有 status 严格等于 settled 的付款金额之和；同一发票可能有多笔付款。pending 和 void 付款不计入。
+2. payments.csv 中找不到对应 invoices.csv 发票的记录忽略。
+3. 金额保留两位小数；outstanding_amount = billed_amount - paid_amount，但最低为 0.00。
+4. status 根据付款后余额确定：余额为 0 时是 paid；余额大于 0 且已付款金额大于 0 时是 partial；没有已付款金额且余额大于 0 时是 unpaid。
+5. 只新增 reconciliation.json，不修改输入 CSV 或创建其他文件。完成前检查 JSON 合法性和金额计算。

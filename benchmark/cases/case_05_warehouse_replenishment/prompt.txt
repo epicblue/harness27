@@ -1,0 +1,10 @@
+根据当前目录下的 stock_levels.csv 和 purchase_orders.csv，生成 reorder_plan.json。
+
+补货规则：
+1. 对每个库存 SKU，只汇总 purchase_orders.csv 中 sku 完全匹配且 status 严格等于 open 的 quantity；received、cancelled 等其他状态不计入。
+2. purchase_orders.csv 中库存表没有的 SKU 忽略。
+3. available_units = on_hand + open_order_units；recommended_order_qty = max(target_stock - available_units, 0)。所有数量都是整数，不需要按包装倍数取整，也不要增加安全库存或预测销量。
+4. 输出只包含 recommended_order_qty 大于 0 的 SKU；每个 SKU 最多一行，按 sku 升序排列。
+5. reorder_plan.json 必须是 JSON 数组，每行必须且只能包含 sku、on_hand、open_order_units、available_units、target_stock、recommended_order_qty 六个字段，数量字段使用 JSON 整数。
+
+只新增 reorder_plan.json；不要修改、删除或新增其他文件。完成前检查输入汇总、补货数量、排序和 JSON 格式。

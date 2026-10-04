@@ -3,12 +3,23 @@ from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
+import re
 import sys
 import uuid
 
 from .agent import Agent
 from .client import LocalClient, ModelError
 from .tools import Tools
+
+TRACE_SCHEMA_VERSION = 1
+LABEL_RE = re.compile(r"[a-z0-9][a-z0-9_-]{0,47}")
+
+
+def label_arg(value):
+    if not LABEL_RE.fullmatch(value):
+        raise argparse.ArgumentTypeError(
+            "标签只能包含小写字母、数字、下划线和连字符，且必须以字母或数字开头（最多 48 字符）")
+    return value
 
 
 def approve(name, args):
@@ -28,6 +39,12 @@ def parser():
     p.add_argument("--model", required=True, help="服务中注册的模型名，不会下载权重")
     p.add_argument("--base-url", default="http://127.0.0.1:8000/v1")
     p.add_argument("--workspace", default="workspace", help="Agent 可访问的目录")
+    p.add_argument("--task-id", type=label_arg,
+                   help="可选的非敏感任务标签，供本地流程分析分组")
+    p.add_argument("--task-category", type=label_arg,
+                   help="可选的非敏感任务类别标签，供本地流程分析分组")
+    p.add_argument("--config-id", type=label_arg,
+                   help="可选的非敏感模型服务配置标签；不要填写 URL 或密钥")
     p.add_argument("--max-steps", type=int, default=12)
     p.add_argument("--max-context-chars", type=int, default=100_000)
     p.add_argument("--max-tokens", type=int, default=2048)
@@ -53,10 +70,18 @@ def main(argv=None):
         print(f"轨迹：{path.resolve()}", file=sys.stderr)
         if args.allow_shell:
             print("警告：Shell 可访问工作目录以外的文件和网络；建议只在隔离容器中启用。", file=sys.stderr)
+        trace_labels = {key: value for key, value in {
+            "task_id": args.task_id,
+            "task_category": args.task_category,
+            "config_id": args.config_id,
+        }.items() if value is not None}
         fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             def trace(event, data):
-                f.write(json.dumps({"time": datetime.now(timezone.utc).isoformat(),
+                if event == "start" and trace_labels:
+                    data = {**data, **trace_labels}
+                f.write(json.dumps({"trace_schema_version": TRACE_SCHEMA_VERSION,
+                                    "time": datetime.now(timezone.utc).isoformat(),
                                     "event": event, **data}, ensure_ascii=False) + "\n")
                 f.flush()
             result = Agent(client, tools, trace, args.max_steps, args.max_context_chars).run(args.task)

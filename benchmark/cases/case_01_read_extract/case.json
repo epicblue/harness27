@@ -1,0 +1,7 @@
+{
+  "title": "从服务配置中提取端口",
+  "category": "information_extraction",
+  "difficulty": "easy",
+  "skills": ["config_parsing", "selective_extraction", "structured_output"],
+  "shell": "disabled"
+}

@@ -1,0 +1,7 @@
+{
+  "title": "对账 CSV 并生成结构化差异报告",
+  "category": "data_transformation",
+  "difficulty": "medium",
+  "skills": ["csv_parsing", "multi_file_reasoning", "aggregation", "numeric_accuracy", "structured_output"],
+  "shell": "disabled"
+}

@@ -1,0 +1,7 @@
+{
+  "title": "依赖分析与敏感文件约束",
+  "category": "constraint_following",
+  "difficulty": "medium",
+  "skills": ["dependency_analysis", "negative_constraint", "safe_tool_use"],
+  "shell": "disabled"
+}
