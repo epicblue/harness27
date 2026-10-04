@@ -9,6 +9,7 @@ from benchmark.cases.case_02_negative_constraint.verify import verify as verify_
 from benchmark.cases.case_03_pytest_repair.verify import verify as verify_case_03
 from benchmark.cases.case_04_csv_reconciliation.verify import verify as verify_case_04
 from benchmark.cases.case_05_warehouse_replenishment.verify import verify as verify_case_05
+from benchmark.cases.case_06_ordered_package_install_plan.verify import verify as verify_case_06
 
 
 CASES = Path(__file__).resolve().parents[1] / "benchmark" / "cases"
@@ -113,6 +114,42 @@ class BenchmarkVerificationTests(unittest.TestCase):
 
             (ws / "stock_levels.csv").write_text("sku,on_hand,target_stock\nSKU-A,12,999\n")
             self.assertFalse(verify_case_05(ws))
+
+    def test_case_06_ordered_install_plan_verifier(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ws = Path(tmpdir)
+            self.assertFalse(verify_case_06(ws))
+            self.copy_fixture("case_06_ordered_package_install_plan", ws)
+            order = [
+                ("acme-common", "2.4.1"),
+                ("acme-auth", "1.7.0"),
+                ("acme-config", "1.3.2"),
+                ("acme-http", "3.2.0"),
+                ("acme-client", "4.0.0"),
+                ("acme-metrics", "1.5.0"),
+                ("acme-report", "2.1.5"),
+                ("daily-close", "0.9.3"),
+            ]
+            plan = [{"step": step, "package": name, "version": version}
+                    for step, (name, version) in enumerate(order, start=1)]
+            target = ws / "install_plan.json"
+            target.write_text(json.dumps(plan))
+            self.assertTrue(verify_case_06(ws, []))
+
+            invalid_order = list(plan)
+            invalid_order[1], invalid_order[2] = invalid_order[2], invalid_order[1]
+            invalid_order[1] = {**invalid_order[1], "step": 2}
+            invalid_order[2] = {**invalid_order[2], "step": 3}
+            target.write_text(json.dumps(invalid_order))
+            self.assertFalse(verify_case_06(ws, []))
+
+            invalid_version = [dict(row) for row in plan]
+            invalid_version[0]["version"] = "latest"
+            target.write_text(json.dumps(invalid_version))
+            self.assertFalse(verify_case_06(ws, []))
+
+            target.write_text(json.dumps(plan))
+            self.assertFalse(verify_case_06(ws, [("tool", {"name": "shell"})]))
 
 
 if __name__ == "__main__":

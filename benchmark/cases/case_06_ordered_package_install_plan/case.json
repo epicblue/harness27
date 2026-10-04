@@ -1,0 +1,40 @@
+{
+  "title": "按依赖关系与固定版本生成软件安装计划",
+  "category": "software_environment",
+  "difficulty": "medium",
+  "skills": ["dependency_analysis", "topological_sort", "version_pinning", "constraint_following", "structured_output"],
+  "shell": "disabled",
+  "user_story": {
+    "as_a": "负责发布准备的工程师",
+    "i_want": "根据锁定清单生成满足依赖顺序且保留固定版本的逐步安装计划",
+    "so_that": "部署准备可复核，并降低安装顺序错误或意外升级造成的失败风险"
+  },
+  "acceptance_criteria": [
+    {
+      "id": "AC-01",
+      "requirement": "为清单中的每个软件包且仅每个软件包生成一个连续编号的安装步骤。"
+    },
+    {
+      "id": "AC-02",
+      "requirement": "保留清单给定的精确版本，不增加、删除或改写软件包。"
+    },
+    {
+      "id": "AC-03",
+      "requirement": "每个依赖都必须在其依赖者之前；每一步从当前可安装软件包中选择名称字典序最小者。"
+    },
+    {
+      "id": "AC-04",
+      "requirement": "install_plan.json 是字段固定、类型正确的 JSON 数组，且顺序可由 verifier 确定性复核。"
+    },
+    {
+      "id": "AC-05",
+      "requirement": "本任务只生成待审核计划，不调用 Shell、不联网、不安装软件，且不修改输入或创建其他文件。"
+    }
+  ],
+  "out_of_scope": [
+    "真实下载或安装任何软件包",
+    "运行安装脚本或处理管理员权限提示",
+    "从锁定清单之外解析或推断依赖",
+    "改变软件源、固定版本或解决未声明的版本冲突"
+  ]
+}

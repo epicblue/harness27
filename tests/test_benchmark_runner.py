@@ -37,7 +37,7 @@ class BenchmarkRunnerTests(unittest.TestCase):
         self.cases = {case.name: case for case in runner.discover_cases()}
 
     def test_discovery_and_path_traversal_rejection(self):
-        self.assertEqual(len(self.cases), 5)
+        self.assertEqual(len(self.cases), 6)
         for case in self.cases.values():
             self.assertEqual(len(case.fingerprint), 64)
         with self.assertRaises(ValueError):
@@ -116,6 +116,48 @@ class BenchmarkRunnerTests(unittest.TestCase):
         self.assertEqual(row["agent_status"], "completed")
         self.assertEqual(row["tool_names"], {"write_file": 1})
         self.assertEqual(row["token_usage"]["total_tokens"], 164)
+        schemas = {item["function"]["name"] for item in client.requests[0][1]}
+        self.assertNotIn("shell", schemas)
+
+    def test_install_plan_case_has_a_complete_testable_user_story(self):
+        metadata = self.cases["case_06_ordered_package_install_plan"].metadata
+        story = metadata["user_story"]
+        self.assertEqual(set(story), {"as_a", "i_want", "so_that"})
+        self.assertTrue(all(isinstance(value, str) and value.strip()
+                            for value in story.values()))
+        criteria = metadata["acceptance_criteria"]
+        self.assertEqual([item["id"] for item in criteria],
+                         ["AC-01", "AC-02", "AC-03", "AC-04", "AC-05"])
+        self.assertTrue(all(item.get("requirement") for item in criteria))
+        self.assertTrue(metadata["out_of_scope"])
+        self.assertEqual(metadata["shell"], "disabled")
+
+    def test_ordered_package_plan_runs_without_exposing_shell(self):
+        order = [
+            ("acme-common", "2.4.1"),
+            ("acme-auth", "1.7.0"),
+            ("acme-config", "1.3.2"),
+            ("acme-http", "3.2.0"),
+            ("acme-client", "4.0.0"),
+            ("acme-metrics", "1.5.0"),
+            ("acme-report", "2.1.5"),
+            ("daily-close", "0.9.3"),
+        ]
+        plan = [{"step": step, "package": name, "version": version}
+                for step, (name, version) in enumerate(order, start=1)]
+        client = FakeClient([
+            call("write-1", "write_file", {
+                "path": "install_plan.json",
+                "content": json.dumps(plan),
+            }),
+            {"role": "assistant", "content": "已生成待审核的安装顺序计划。"},
+        ])
+        row = runner.run_case(
+            self.cases["case_06_ordered_package_install_plan"], client, "test-run", 1,
+            max_steps=4, allow_shell=True,
+        )
+        self.assertEqual(row["status"], "passed")
+        self.assertEqual(row["tool_names"], {"write_file": 1})
         schemas = {item["function"]["name"] for item in client.requests[0][1]}
         self.assertNotIn("shell", schemas)
 

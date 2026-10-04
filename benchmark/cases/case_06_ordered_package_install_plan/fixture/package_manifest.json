@@ -1,0 +1,15 @@
+{
+  "project": "daily-close-service",
+  "python_version": "3.12",
+  "package_source": "approved-local-wheelhouse",
+  "packages": [
+    {"name": "acme-common", "version": "2.4.1", "dependencies": []},
+    {"name": "acme-auth", "version": "1.7.0", "dependencies": ["acme-common"]},
+    {"name": "acme-config", "version": "1.3.2", "dependencies": ["acme-common"]},
+    {"name": "acme-http", "version": "3.2.0", "dependencies": ["acme-common"]},
+    {"name": "acme-metrics", "version": "1.5.0", "dependencies": ["acme-common"]},
+    {"name": "acme-client", "version": "4.0.0", "dependencies": ["acme-auth", "acme-config", "acme-http"]},
+    {"name": "acme-report", "version": "2.1.5", "dependencies": ["acme-client", "acme-metrics"]},
+    {"name": "daily-close", "version": "0.9.3", "dependencies": ["acme-report"]}
+  ]
+}

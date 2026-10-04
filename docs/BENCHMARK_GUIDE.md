@@ -4,7 +4,7 @@
 
 Benchmark 的目的，是在真实本机推理服务上回答具体、有限的问题：给定某个模型服务配置、任务、工具权限和执行预算，Agent 是否能产出通过客观 verifier 的结果？它同时记录完成状态、工具行为、耗时和 token usage，用于发现任务能力边界及重复运行时的波动。
 
-当前仓库有五个小型 smoke case，覆盖配置抽取、约束遵循、代码修复、CSV 对账和库存补货规划。它们不构成代表性行业基准，样本数量不足以支撑“27B 模型普遍会/不会做某类任务”的结论。仓库本身没有 27B 权重或推理服务，也尚无实测成功率。测试里的 mock-client 成功不属于模型实测。终端逐步示例见[使用场景实例](USE_CASES.md)。
+当前仓库有六个小型 smoke case，覆盖配置抽取、约束遵循、代码修复、CSV 对账、库存补货和软件包依赖顺序规划。它们不构成代表性行业基准，样本数量不足以支撑“27B 模型普遍会/不会做某类任务”的结论。仓库本身没有 27B 权重或推理服务，也尚无实测成功率。测试里的 mock-client 成功不属于模型实测。终端逐步示例见[使用场景实例](USE_CASES.md)。
 
 ## 2. 启动一次评测
 
@@ -93,8 +93,9 @@ Fixture 复制会拒绝符号链接，忽略 Python `__pycache__`/`.pyc`/`.pyo` 
 | `case_03_pytest_repair` | `software_maintenance` / easy | `code_debugging`、`test_execution`、`protected_file` | 修复 `calc.py` 的空列表均值 bug，运行测试，禁止改测试。Verifier 对测试文件 hash 做固定校验并启动受 30 秒限制的 unittest。 | 必需 |
 | `case_04_csv_reconciliation` | `data_transformation` / medium | `csv_parsing`、`multi_file_reasoning`、`aggregation`、`numeric_accuracy`、`structured_output` | 连接发票与付款 CSV，汇总 settled 付款，忽略 pending/void 与无匹配 ID，输出排序后的 JSON。Verifier 校验金额、状态、输入 hash 和文件集合。 | 禁用 |
 | `case_05_warehouse_replenishment` | `operations_planning` / medium | `csv_parsing`、`multi_file_reasoning`、`inventory_planning`、`constraint_following`、`structured_output` | 汇总库存与 open 采购单，忽略已收货/取消/未知 SKU，生成有序补货建议。Verifier 检查精确整数、输入 hash 和输出文件集合。 | 禁用 |
+| `case_06_ordered_package_install_plan` | `software_environment` / medium | `dependency_analysis`、`topological_sort`、`version_pinning`、`constraint_following`、`structured_output` | 根据合成锁定清单生成有序安装计划；不运行 Shell、不联网、不安装包。Verifier 检查版本、依赖顺序和完整性。 | 禁用 |
 
-`case_05_warehouse_replenishment` 同时示范了完整用户故事：`case.json` 内含 `as_a` / `i_want` / `so_that`、可测试验收标准（AC-01 至 AC-05）和范围外事项；`prompt.txt` 给模型实际任务，独立 verifier 与单元测试落实验收标准。因为 `case.json` 和 prompt 都参与 case fingerprint，故事/需求变更会形成新的评测版本。故事的完整业务说明见[使用场景实例](USE_CASES.md)。
+`case_05_warehouse_replenishment` 和 `case_06_ordered_package_install_plan` 都示范了完整用户故事：`case.json` 内含 `as_a` / `i_want` / `so_that`、AC-01 至 AC-05 和范围外事项；`prompt.txt` 给模型实际任务，独立 verifier 与单元测试落实验收标准。安装顺序用例只生成计划，不执行软件安装。因为 `case.json` 和 prompt 都参与 case fingerprint，故事/需求变更会形成新的评测版本。故事的完整说明见[使用场景实例](USE_CASES.md)。
 
 `difficulty` 是仓库内的粗分级，不是校准过的量表；`skills` 是标签，不保证彼此独立。标签的类别数和 case 数很小，不能将按技能的结果相加成统一“能力总分”。
 
@@ -145,7 +146,7 @@ Runner 完成所有 case 但有 task verifier 失败时，进程仍可以返回 
 新增目录建议使用稳定小写 ID：
 
 ```text
-benchmark/cases/case_06_<topic>/
+benchmark/cases/case_07_<topic>/
   case.json
   prompt.txt
   verify.py

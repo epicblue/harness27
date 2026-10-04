@@ -207,6 +207,39 @@ python -m harness27 \
 
 如果要把结论保存为 `incident-summary.md`，需明确要求写入；主 CLI 会显示完整写入参数，只有交互输入 `yes` 才会执行。保存的日志轨迹也可能含原文件内容，须按敏感数据管理。
 
+## 场景七：为离线发布准备生成有序安装计划
+
+**完整用户故事：**
+
+> 作为负责发布准备的工程师，我想根据锁定清单生成满足依赖关系且保留固定版本的逐步安装计划，以便安装过程可审核、可复现，并降低依赖顺序错误或意外升级导致的失败。
+
+- **触发条件：** 为测试或发布准备新的隔离 Python 环境。
+- **前置条件：** `package_manifest.json` 列出目标 Python 版本、批准的软件源、精确固定的包版本及清单内的直接依赖。示例包名与版本是合成数据。
+- **主要流程：** 读取清单；选择依赖都已满足的包；若有多个可选包，选包名字典序最小者；输出逐步计划供人工审核。
+- **验收标准：**
+  - **AC-01：** 清单里的每个包都出现一次，步骤从 1 连续编号。
+  - **AC-02：** 不更改、删除或增加包名与固定版本。
+  - **AC-03：** 每个依赖都排在依赖它的软件包之前。
+  - **AC-04：** 并列可安装包按字典序择优，输出字段和类型符合 JSON 契约。
+  - **AC-05：** 只生成 `install_plan.json`，不调用 Shell、不联网、不执行下载或安装，也不改动输入。
+- **不在范围内：** 真实安装、运行安装脚本、管理员权限、清单外依赖解析和版本冲突处置。
+
+此用例只测试“读依赖清单并规划顺序”，**不会安装真实软件**。自动化 verifier 检查固定版本、完整性、依赖先后、唯一排序规则、输入 hash 和禁止 Shell；FakeClient 测试覆盖 Runner 链路。离线测试（不会连接模型或包仓库）：
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+若要让本机模型生成计划，可运行禁用 Shell 的 benchmark：
+
+```bash
+python benchmark/runner.py \
+  --model local-27b \
+  --case case_06_ordered_package_install_plan
+```
+
+期望顺序为 `acme-common`、`acme-auth`、`acme-config`、`acme-http`、`acme-client`、`acme-metrics`、`acme-report`、`daily-close`。此例的成功只证明模型按该合成清单生成了计划，不代表真实安装已完成或可安全执行。真实安装应在单独、可销毁、低权限的隔离环境中由受控脚本执行；不应给模型任意 Shell 权限来代替安装编排或回滚机制。
+
 ## 把业务需求写成好任务
 
 无论是运营、数据还是代码任务，建议把 prompt 写成一个可执行验收清单：
@@ -230,4 +263,5 @@ python -m harness27 \
 | 限制敏感数据读取并依赖分析 | `benchmark/runner.py --case case_02_negative_constraint` | 永久禁用 | 是，包含 trace 检查 |
 | 多文件 CSV 汇总 | `benchmark/runner.py --case case_04_csv_reconciliation` | 否 | 是 |
 | 库存与在途采购核算 | `benchmark/runner.py --case case_05_warehouse_replenishment` | 否 | 是 |
+| 多软件包依赖顺序计划（仅计划，不安装） | `benchmark/runner.py --case case_06_ordered_package_install_plan` | 否 | 是，检查依赖顺序和版本 |
 | 编辑代码并调用测试命令 | 隔离环境中的 case 03 或 CLI | 是 | case 03 有固定 verifier |

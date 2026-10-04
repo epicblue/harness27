@@ -1,0 +1,11 @@
+我是负责发布准备的工程师，要为 daily-close-service 整理一份供审核的离线安装顺序，避免上层包先于依赖安装，也避免软件版本发生漂移。请读取 package_manifest.json，并生成 install_plan.json。
+
+要求：
+1. 清单中的每个 package 都必须且只能出现一次，版本必须与清单完全一致。
+2. 每个 package 的所有 dependencies 必须排在它之前。
+3. 按依赖优先的拓扑顺序安排步骤；每一步从当前所有依赖都已满足的软件包中，选择名称字典序最小的一个，以得到唯一、可复核的顺序。
+4. 输出为 JSON 数组，每项必须且只能包含 step、package、version；step 从 1 开始连续递增，package 和 version 使用字符串。
+5. 本任务只生成安装计划，不要运行 pip、apt、brew 或任何安装/下载命令，不要使用 Shell，也不要联网。
+6. 只新增 install_plan.json；不要修改清单或创建其他文件/目录。
+
+完成前核对软件包数量、固定版本、依赖先后、字典序择优规则、步骤编号和 JSON 格式。

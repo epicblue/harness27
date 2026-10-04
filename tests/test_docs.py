@@ -74,6 +74,22 @@ class DocumentationTests(unittest.TestCase):
                 self.assertIn(criterion["id"], use_cases)
                 self.assertTrue(criterion["requirement"])
 
+    def test_package_install_story_is_a_safe_test_plan_documented(self):
+        case_dir = ROOT / "benchmark" / "cases" / "case_06_ordered_package_install_plan"
+        metadata = json.loads((case_dir / "case.json").read_text(encoding="utf-8"))
+        story = metadata["user_story"]
+        self.assertTrue(all(story.get(field) for field in ("as_a", "i_want", "so_that")))
+        self.assertEqual(metadata["shell"], "disabled")
+        prompt = (case_dir / "prompt.txt").read_text(encoding="utf-8")
+        self.assertIn("不要运行 pip", prompt)
+        self.assertIn("dependencies", (case_dir / "fixture" / "package_manifest.json")
+                      .read_text(encoding="utf-8"))
+        use_cases = (ROOT / "docs" / "USE_CASES.md").read_text(encoding="utf-8")
+        for criterion in metadata["acceptance_criteria"]:
+            with self.subTest(criterion=criterion["id"]):
+                self.assertIn(criterion["id"], use_cases)
+                self.assertTrue(criterion["requirement"])
+
 
 if __name__ == "__main__":
     unittest.main()
