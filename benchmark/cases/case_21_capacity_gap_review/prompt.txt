@@ -1,0 +1,10 @@
+我是产能计划员，需要将合成需求与产线能力快照核对，生成供人工排产评审的产能缺口表。请读取 production_demand.csv、line_capacity.csv 和 capacity_policy.json，只新增 capacity_review.json。
+
+规则：
+1. 按 work_date、sku 连接一条需求和对应产线能力记录。
+2. required_run_minutes = ceil(demand_units × ideal_cycle_seconds / 60)，按 capacity_policy.json 的 seconds_per_minute 换算并向上取整。
+3. capacity_gap_minutes = max(required_run_minutes - available_minutes, 0)。为 0 时 status="capacity_sufficient"，大于 0 时 status="capacity_gap"。
+4. 每项只含 work_date、sku、line_id、demand_units、required_run_minutes、available_minutes、capacity_gap_minutes、status。按 work_date、sku 升序，数量为 JSON 整数。
+5. 只写 capacity_review.json；不调用 Shell、联网、跨线重分配、修改排产或访问生产系统。
+
+完成前核对需求/产线连接、秒转分钟的向上取整、缺口非负和日期/SKU 顺序。合成快照不包含换型、停机、良率或人员约束，报告只是评审输入。

@@ -1,0 +1,6 @@
+{
+  "as_of_date": "2026-10-04",
+  "due_soon_window_days": 14,
+  "overdue_rule": "due_date_before_as_of_date",
+  "due_soon_includes_as_of_date": true
+}

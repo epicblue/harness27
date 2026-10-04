@@ -1,0 +1,5 @@
+{
+  "units_per_carton_by_sku": {"SKU-A": 12, "SKU-B": 24},
+  "cartons_per_pallet_by_sku": {"SKU-A": 8, "SKU-B": 4},
+  "partial_carton_uses_one_carton_position": true
+}

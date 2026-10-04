@@ -4,7 +4,7 @@
 
 Benchmark 的目的，是在真实本机推理服务上回答具体、有限的问题：给定某个模型服务配置、任务、工具权限和执行预算，Agent 是否能产出通过客观 verifier 的结果？它同时记录完成状态、工具行为、耗时和 token usage，用于发现任务能力边界及重复运行时的波动。
 
-当前仓库有十一个小型 smoke case，覆盖配置抽取、约束遵循、代码修复、CSV 对账、库存补货、软件包依赖顺序规划、支持工单分派、会议室分配，以及制造质检、工单物料齐套核对和批次追溯。它们不构成代表性行业基准，样本数量不足以支撑“27B 模型普遍会/不会做某类任务”的结论。仓库本身没有 27B 权重或推理服务，也尚无实测成功率。测试里的 mock-client 成功不属于模型实测。终端逐步示例见[使用场景实例](USE_CASES.md)。
+当前仓库有二十一个小型 smoke case，覆盖配置抽取、约束遵循、代码修复、CSV 对账、库存补货、软件包依赖顺序规划、支持工单分派、会议室分配，以及制造质检、物料齐套、批次追溯、OEE、校准/维护、换型、来料、标签、报废、停机、包装和产能核对。它们不构成代表性行业基准，样本数量不足以支撑“27B 模型普遍会/不会做某类任务”的结论。仓库本身没有 27B 权重或推理服务，也尚无实测成功率。测试里的 mock-client 成功不属于模型实测。终端逐步示例见[使用场景实例](USE_CASES.md)。
 
 ## 2. 启动一次评测
 
@@ -99,8 +99,18 @@ Fixture 复制会拒绝符号链接，忽略 Python `__pycache__`/`.pyc`/`.pyo` 
 | `case_09_quality_inspection_review` | `quality_operations` / medium | `csv_parsing`、`numeric_comparison`、`policy_lookup`、`data_grouping`、`constraint_following`、`structured_output` | 比较合成测量和规格限值，按抽样门槛生成待人工复核的批次摘要；不放行产品。Verifier 检查边界包含、超差项、状态和文件集合。 | 禁用 |
 | `case_10_production_material_readiness` | `production_planning` / medium | `csv_parsing`、`bill_of_materials_reasoning`、`integer_arithmetic`、`policy_lookup`、`shortage_analysis`、`structured_output` | 将工单连接到 BOM 和工单级分配快照，计算齐套状态及组件短缺。Verifier 检查乘法、缺失分配、排序和输入完整性。 | 禁用 |
 | `case_11_material_lot_traceability` | `manufacturing_traceability` / medium | `csv_parsing`、`multi_file_join`、`lot_traceability`、`deduplication`、`structured_output` | 从合成组件 lot 精确追溯关联成品批次、发运和未发运范围。Verifier 检查去重、关联、排序及输入完整性。 | 禁用 |
+| `case_12_oee_shift_report` | `operations_metrics` / medium | `csv_parsing`、`oee_calculation`、`numeric_accuracy`、`policy_lookup`、`structured_output` | 从合成班次计数计算 OEE 四项比例，按 policy 舍入；不控制设备。 | 禁用 |
+| `case_13_calibration_due_review` | `maintenance_planning` / easy | `csv_parsing`、`date_arithmetic`、`policy_lookup`、`sorting`、`structured_output` | 按校准周期和复核日期生成逾期/临期/当前清单。 | 禁用 |
+| `case_14_maintenance_event_triage` | `maintenance_planning` / medium | `csv_parsing`、`policy_lookup`、`rule_based_classification`、`prioritization`、`structured_output` | 按安全标记、产线影响和设备关键性给合成维修事件分级。 | 禁用 |
+| `case_15_changeover_sequence_plan` | `production_planning` / medium | `csv_parsing`、`policy_lookup`、`deterministic_scheduling`、`matrix_lookup`、`integer_arithmetic`、`structured_output` | 按给定顺序规则排列工单并计算相邻产品族换型分钟。 | 禁用 |
+| `case_16_supplier_receipt_reconciliation` | `supply_chain_operations` / medium | `csv_parsing`、`multi_file_join`、`aggregation`、`integer_arithmetic`、`reconciliation`、`structured_output` | 汇总订单行的接受、拒收、未到和超收数量，不做库存过账。 | 禁用 |
+| `case_17_packaging_label_audit` | `quality_operations` / medium | `csv_parsing`、`multi_file_join`、`exact_matching`、`validation`、`structured_output` | 将合成打印标签与工单 SKU/lot/revision 核对，输出差异字段。 | 禁用 |
+| `case_18_scrap_reason_summary` | `quality_operations` / easy | `csv_parsing`、`policy_lookup`、`aggregation`、`unknown_code_handling`、`structured_output` | 按 SKU 和原因码汇总报废量；未映射原因标为 unmapped，不猜根因。 | 禁用 |
+| `case_19_downtime_duration_summary` | `operations_metrics` / medium | `csv_parsing`、`datetime_arithmetic`、`aggregation`、`grouping`、`structured_output` | 汇总合成设备事件的 UTC 停机分钟和事件数，不做设备控制。 | 禁用 |
+| `case_20_packout_estimate` | `packaging_planning` / easy | `csv_parsing`、`policy_lookup`、`integer_arithmetic`、`ceiling_division`、`structured_output` | 按包装规格估算满箱、尾箱、箱数和托盘数，不打印标签或发运。 | 禁用 |
+| `case_21_capacity_gap_review` | `production_planning` / medium | `csv_parsing`、`multi_file_join`、`time_unit_conversion`、`capacity_planning`、`shortage_analysis`、`structured_output` | 对比需求节拍分钟与产线可用时间，生成合成产能缺口表。 | 禁用 |
 
-`case_05_warehouse_replenishment` 至 `case_11_material_lot_traceability` 均示范了完整用户故事：`case.json` 内含 `as_a` / `i_want` / `so_that`、AC-01 至 AC-05 和范围外事项；`prompt.txt` 给模型实际任务，独立 verifier 与单元测试落实验收标准。各用例只处理合成数据并生成待人工审核的计划或报告，不执行安装、工单、日历、质量放行、库存分配、设备控制或召回操作；也不连接实际服务台、MES、ERP、WMS 或 QMS。因为 `case.json` 和 prompt 都参与 case fingerprint，故事/需求变更会形成新的评测版本。故事的完整说明见[使用场景实例](USE_CASES.md)。
+`case_05_warehouse_replenishment` 至 `case_21_capacity_gap_review` 均提供完整用户故事：`case.json` 内含 `as_a` / `i_want` / `so_that`、AC-01 至 AC-05 和范围外事项；`prompt.txt` 给模型实际任务，独立 verifier 与单元测试落实验收标准。新增制造业用例只处理合成数据并生成待人工审核的摘要、核对表或计划，不执行安装、排程、质量放行、库存分配、设备控制、标签打印、收货过账或召回操作；也不连接实际 MES、ERP、WMS、QMS 或设备。因为 `case.json` 和 prompt 都参与 case fingerprint，故事/需求变更会形成新的评测版本。故事的完整说明见[使用场景实例](USE_CASES.md)。
 
 `difficulty` 是仓库内的粗分级，不是校准过的量表；`skills` 是标签，不保证彼此独立。标签的类别数和 case 数很小，不能将按技能的结果相加成统一“能力总分”。
 
@@ -151,7 +161,7 @@ Runner 完成所有 case 但有 task verifier 失败时，进程仍可以返回 
 新增目录建议使用稳定小写 ID：
 
 ```text
-benchmark/cases/case_12_<topic>/
+benchmark/cases/case_22_<topic>/
   case.json
   prompt.txt
   verify.py

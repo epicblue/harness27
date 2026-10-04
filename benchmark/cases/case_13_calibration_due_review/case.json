@@ -1,0 +1,20 @@
+{
+  "title": "生成设备校准到期复核清单",
+  "category": "maintenance_planning",
+  "difficulty": "easy",
+  "skills": ["csv_parsing", "date_arithmetic", "policy_lookup", "sorting", "structured_output"],
+  "shell": "disabled",
+  "user_story": {
+    "as_a": "计量设备管理员",
+    "i_want": "按最近校准日期、校准周期和复核日期生成设备到期状态清单",
+    "so_that": "团队可以提前安排人工校准复核，并发现已经超过计划日期的设备"
+  },
+  "acceptance_criteria": [
+    {"id": "AC-01", "requirement": "每台设备恰好输出一条记录，字段仅为 equipment_id、due_date、status、days_until_due。"},
+    {"id": "AC-02", "requirement": "due_date = last_calibration_date + interval_days；日期按日历日计算。"},
+    {"id": "AC-03", "requirement": "按 as_of_date 判断：due_date 早于复核日为 overdue；当日到窗口末日（含）为 due_soon；之后为 current。"},
+    {"id": "AC-04", "requirement": "days_until_due 为 due_date 与 as_of_date 的有符号日差，按 due_date、equipment_id 升序输出。"},
+    {"id": "AC-05", "requirement": "只新增 calibration_review.json；不锁定设备、不修改资产记录、不调用 Shell 或外部系统。"}
+  ],
+  "out_of_scope": ["执行或认证校准", "自动锁定/解锁设备", "更改校准间隔或仪器精度参数", "写入真实 CMMS、QMS 或资产系统"]
+}

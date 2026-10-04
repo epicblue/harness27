@@ -1,0 +1,9 @@
+我是包装质量检验员，需要比较一批合成标签记录与对应工单主数据，生成供人工审核的差异报告。请读取 work_orders.csv、printed_labels.csv 和 label_policy.json，只新增 label_audit.json。
+
+规则：
+1. 按 work_order_id 将 printed_labels.csv 与 work_orders.csv 连接。工单不存在时 status="unknown_work_order"，mismatch_fields 只含 "work_order_id"。
+2. 对已知工单，比较 printed_sku 与 finished_sku、printed_lot 与 finished_lot、printed_revision 与 label_revision。完全一致为 "match"，否则为 "mismatch"，mismatch_fields 列出不匹配的字段名（sku、lot、label_revision），遵循 policy 的 mismatch_field_order。
+3. 每个 label_id 恰好一条结果；按 label_id 升序。每项只含 label_id、work_order_id、status、mismatch_fields。
+4. 只写 label_audit.json；不调用 Shell、联网、打印/作废标签、修改工单或访问外部系统。
+
+完成前核对工单连接、精确字符串比较、未知工单、差异字段顺序及标签数量。数据为合成样例；报告不代表实体标签已经检查或产品已放行。

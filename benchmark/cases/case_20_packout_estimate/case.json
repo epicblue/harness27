@@ -1,0 +1,20 @@
+{
+  "title": "估算成品订单的纸箱与托盘数量",
+  "category": "packaging_planning",
+  "difficulty": "easy",
+  "skills": ["csv_parsing", "policy_lookup", "integer_arithmetic", "ceiling_division", "structured_output"],
+  "shell": "disabled",
+  "user_story": {
+    "as_a": "包装计划员",
+    "i_want": "按 SKU 包装规格把合成成品数量换算为满箱、尾箱和托盘估算",
+    "so_that": "团队可以在人工审核时预估包装物料和托盘需求"
+  },
+  "acceptance_criteria": [
+    {"id": "AC-01", "requirement": "每个订单恰好输出一条记录，字段仅为 order_id、sku、units、full_cartons、partial_carton_units、carton_count、pallet_count、cartons_on_last_pallet。"},
+    {"id": "AC-02", "requirement": "full_cartons 和 partial_carton_units 按 units_per_carton 做商和余数；尾箱只要有余数就计作一箱。"},
+    {"id": "AC-03", "requirement": "carton_count = full_cartons + (partial_carton_units > 0)；pallet_count 按每托盘箱数向上取整；最后一托箱数按余数计算，整除时为满托。"},
+    {"id": "AC-04", "requirement": "包装规格按 SKU 查找，订单按 order_id 升序；数量字段均为整数。"},
+    {"id": "AC-05", "requirement": "只新增 packout_estimate.json；不打印标签、不打包/发运实体货物、不调用 Shell 或外部系统。"}
+  ],
+  "out_of_scope": ["优化托盘堆码或重量分布", "打印或贴附标签", "创建发运单或预约承运", "修改生产订单或库存"]
+}

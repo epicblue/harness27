@@ -1,0 +1,10 @@
+我是来料计划员，需要把合成采购订单行和收货记录核对成供人工复核的数量报告。请读取 po_lines.csv 和 receipts.csv，只新增 receipt_reconciliation.json。
+
+规则：
+1. 按 po_id、line_id 连接收货行；没有收货记录时各接收数量按 0。
+2. accepted_qty 和 rejected_qty 分别求和；received_qty = accepted_qty + rejected_qty。注意：rejected_qty 计入已到货数量，但不代表合格或可用库存。
+3. outstanding_qty = max(ordered_qty - received_qty, 0)。received_qty < ordered_qty 时 status="short_received"；相等时 "complete"；大于时 "over_received"。
+4. 每个采购订单行只输出一次，字段仅为 po_id、line_id、sku、ordered_qty、accepted_qty、rejected_qty、received_qty、outstanding_qty、status。po_id、line_id、sku、status 保持字符串；数量字段为 JSON 整数。按 po_id、line_id 升序。
+5. 只写 receipt_reconciliation.json；不要调用 Shell、联网、入库、修改采购单或联系供应商。
+
+完成前核对多次收货汇总、拒收数量与到货数量的区别、未到/超收计算、行数和排序。结果是合成数据的差异报告，不是收货验收或库存过账。

@@ -1,0 +1,7 @@
+event_id,asset_id,observed_at_utc,asset_criticality,production_impact,safety_flag
+EV-401,ASSET-01,2026-10-04T07:50:00Z,A,stopped,false
+EV-402,ASSET-02,2026-10-04T08:10:00Z,B,reduced,false
+EV-403,ASSET-03,2026-10-04T07:45:00Z,A,reduced,true
+EV-404,ASSET-04,2026-10-04T09:15:00Z,C,none,false
+EV-405,ASSET-05,2026-10-04T07:30:00Z,B,stopped,false
+EV-406,ASSET-06,2026-10-04T08:00:00Z,A,reduced,false

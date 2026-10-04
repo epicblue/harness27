@@ -1,0 +1,5 @@
+{
+  "seconds_per_minute": 60,
+  "required_minutes_rounding": "ceiling",
+  "one_capacity_row_per_work_date_sku": true
+}

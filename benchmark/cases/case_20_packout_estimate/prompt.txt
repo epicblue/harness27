@@ -1,0 +1,10 @@
+我是包装计划员，需要按合成订单和 SKU 包装规格估算纸箱与托盘数量，供人工审核。请读取 finished_orders.csv 和 packaging_specs.json，只新增 packout_estimate.json。
+
+规则：
+1. 按 SKU 查 units_per_carton 和 cartons_per_pallet。
+2. full_cartons = units // units_per_carton；partial_carton_units = units % units_per_carton。carton_count = full_cartons 加上（若余数大于 0 则再加 1）。部分装满的尾箱也占用一个纸箱位和托盘位。
+3. pallet_count = ceil(carton_count / cartons_per_pallet)。若 carton_count 为 0，则 pallet_count 和 cartons_on_last_pallet 均为 0；否则 cartons_on_last_pallet = carton_count % cartons_per_pallet，余数为 0 时取 cartons_per_pallet。
+4. 每个订单输出 order_id、sku、units、full_cartons、partial_carton_units、carton_count、pallet_count、cartons_on_last_pallet，按 order_id 升序，数量均为整数。
+5. 只写 packout_estimate.json；不调用 Shell、联网、打印标签、打包或发运实体货物。
+
+完成前核对整除与余数、尾箱计数、托盘向上取整、满托边界和输出顺序。此结果是包装数量估算，不是实际装箱或承运计划。

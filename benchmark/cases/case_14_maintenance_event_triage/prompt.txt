@@ -1,0 +1,12 @@
+我是设备维护协调员，需要按维护政策整理合成设备事件，生成供人工分派前审核的优先队列。请读取 maintenance_events.csv 和 maintenance_policy.json，只新增 maintenance_queue.json。
+
+判定规则按 maintenance_policy.json 的 rule_precedence 顺序执行，命中第一条即停止，并按 priority_by_condition 取优先级：
+1. safety_flag 为 true：safety_flag_true。
+2. 否则 production_impact 为 stopped：production_impact_stopped。
+3. 否则 production_impact 为 reduced 且 asset_criticality 为 A：production_impact_reduced_criticality_A。
+4. 否则 production_impact 为 reduced：production_impact_reduced_other。
+5. 否则：production_impact_none。
+
+response_window_minutes 按 maintenance_policy.json 对应优先级查找。输出每个事件的 event_id、asset_id、priority、response_window_minutes，按 policy 的 priority_order、observed_at_utc、event_id 升序排列。只写 maintenance_queue.json；不要调用 Shell、联网、诊断根因、停机或控制设备，也不要创建真实维修工单。
+
+完成前核对安全标记的最高优先级、影响/关键性组合、响应窗口和排序。数据为合成事件；优先级不是自动派工或设备控制命令。

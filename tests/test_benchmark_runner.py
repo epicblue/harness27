@@ -1,4 +1,5 @@
 import json
+from importlib import import_module
 import os
 from pathlib import Path
 import tempfile
@@ -37,7 +38,7 @@ class BenchmarkRunnerTests(unittest.TestCase):
         self.cases = {case.name: case for case in runner.discover_cases()}
 
     def test_discovery_and_path_traversal_rejection(self):
-        self.assertEqual(len(self.cases), 11)
+        self.assertEqual(len(self.cases), 21)
         for case in self.cases.values():
             self.assertEqual(len(case.fingerprint), 64)
         with self.assertRaises(ValueError):
@@ -251,6 +252,16 @@ class BenchmarkRunnerTests(unittest.TestCase):
             "case_09_quality_inspection_review",
             "case_10_production_material_readiness",
             "case_11_material_lot_traceability",
+            "case_12_oee_shift_report",
+            "case_13_calibration_due_review",
+            "case_14_maintenance_event_triage",
+            "case_15_changeover_sequence_plan",
+            "case_16_supplier_receipt_reconciliation",
+            "case_17_packaging_label_audit",
+            "case_18_scrap_reason_summary",
+            "case_19_downtime_duration_summary",
+            "case_20_packout_estimate",
+            "case_21_capacity_gap_review",
         )
         for case_name in case_names:
             with self.subTest(case=case_name):
@@ -321,6 +332,12 @@ class BenchmarkRunnerTests(unittest.TestCase):
                 },
             ),
         }
+        for number in range(12, 22):
+            prefix = f"case_{number:02d}_"
+            case_name = next(name for name in self.cases if name.startswith(prefix))
+            verifier_module = import_module(f"benchmark.cases.{case_name}.verify")
+            plans[case_name] = (verifier_module.OUTPUT_FILENAME, verifier_module.EXPECTED)
+
         for case_name, (output_path, expected) in plans.items():
             with self.subTest(case=case_name):
                 client = FakeClient([

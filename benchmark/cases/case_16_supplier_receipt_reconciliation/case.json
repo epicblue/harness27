@@ -1,0 +1,20 @@
+{
+  "title": "核对采购订单与来料接收数量",
+  "category": "supply_chain_operations",
+  "difficulty": "medium",
+  "skills": ["csv_parsing", "multi_file_join", "aggregation", "integer_arithmetic", "reconciliation", "structured_output"],
+  "shell": "disabled",
+  "user_story": {
+    "as_a": "来料计划员",
+    "i_want": "将采购订单行与多次收货记录汇总，区分已接收、拒收、未到和超收数量",
+    "so_that": "团队可以在人工复核时发现交付差异，而不把拒收数量误当成合格库存"
+  },
+  "acceptance_criteria": [
+    {"id": "AC-01", "requirement": "每个采购订单行恰好输出一条记录；按 po_id、line_id 升序。"},
+    {"id": "AC-02", "requirement": "accepted_qty、rejected_qty 分别汇总该行所有收货记录；received_qty = accepted_qty + rejected_qty。"},
+    {"id": "AC-03", "requirement": "outstanding_qty = max(ordered_qty - received_qty, 0)；received_qty 小于/等于/大于 ordered_qty 时分别为 short_received/complete/over_received。"},
+    {"id": "AC-04", "requirement": "输出数值均为整数，并保留 accepted 与 rejected 的区分。"},
+    {"id": "AC-05", "requirement": "只新增 receipt_reconciliation.json；不更新采购单、库存或供应商记录，不调用 Shell 或外部系统。"}
+  ],
+  "out_of_scope": ["自动验收或拒收实体物料", "将接收数量入库", "更新采购订单或供应商交期", "联系供应商或连接 ERP/WMS"]
+}

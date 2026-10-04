@@ -1,0 +1,20 @@
+{
+  "title": "汇总设备停机事件持续时间",
+  "category": "operations_metrics",
+  "difficulty": "medium",
+  "skills": ["csv_parsing", "datetime_arithmetic", "aggregation", "grouping", "structured_output"],
+  "shell": "disabled",
+  "user_story": {
+    "as_a": "设备可靠性分析员",
+    "i_want": "从合成停机事件的 UTC 起止时间计算各设备和原因码的累计分钟数与事件数",
+    "so_that": "维护团队可以用可复核的统计摘要开展后续分析，而不依赖手工计时"
+  },
+  "acceptance_criteria": [
+    {"id": "AC-01", "requirement": "每个 asset_id、reason_code 组合恰好一条记录，字段仅为 asset_id、reason_code、event_count、downtime_minutes。"},
+    {"id": "AC-02", "requirement": "每次持续分钟数等于 end_utc 与 start_utc 的时间差；总时长为同组各事件之和。"},
+    {"id": "AC-03", "requirement": "event_count 为事件行数，downtime_minutes 为整数分钟。"},
+    {"id": "AC-04", "requirement": "按 asset_id、reason_code 升序输出，不遗漏事件或重复分组。"},
+    {"id": "AC-05", "requirement": "只新增 downtime_summary.json；不控制设备、不修改日志、不调用 Shell 或外部系统。"}
+  ],
+  "out_of_scope": ["推断停机根因或设备责任", "自动复位、启停或控制设备", "创建维护工单或改生产计划", "连接真实 PLC/MES/CMMS"]
+}

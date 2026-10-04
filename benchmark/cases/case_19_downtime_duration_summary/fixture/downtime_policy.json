@@ -1,0 +1,5 @@
+{
+  "time_unit": "minutes",
+  "timestamp_timezone": "UTC",
+  "group_order": ["asset_id_ascending", "reason_code_ascending"]
+}

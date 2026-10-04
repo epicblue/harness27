@@ -1,0 +1,6 @@
+equipment_id,last_calibration_date,interval_days
+CAL-02,2026-08-01,60
+CAL-01,2026-09-04,30
+CAL-03,2026-09-10,30
+CAL-04,2026-08-20,90
+CAL-05,2026-09-20,28

@@ -1,0 +1,6 @@
+event_id,work_order_id,sku,quantity,reason_code
+SCR-901,WO-901,SKU-A,3,BURN
+SCR-902,WO-902,SKU-A,2,BURN
+SCR-903,WO-903,SKU-A,4,DIM
+SCR-904,WO-904,SKU-B,1,SETUP
+SCR-905,WO-905,SKU-B,2,R-99

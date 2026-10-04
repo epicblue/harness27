@@ -111,6 +111,16 @@ class DocumentationTests(unittest.TestCase):
             "case_09_quality_inspection_review": ("不要调用 Shell", "lower_limit"),
             "case_10_production_material_readiness": ("不调用 Shell", "priority_order"),
             "case_11_material_lot_traceability": ("不要调用 Shell", "component_lot"),
+            "case_12_oee_shift_report": ("Shell", "ideal_cycle_seconds"),
+            "case_13_calibration_due_review": ("Shell", "interval_days"),
+            "case_14_maintenance_event_triage": ("Shell", "priority_by_condition"),
+            "case_15_changeover_sequence_plan": ("Shell", "changeover_minutes_by_family"),
+            "case_16_supplier_receipt_reconciliation": ("Shell", "accepted_qty"),
+            "case_17_packaging_label_audit": ("Shell", "printed_revision"),
+            "case_18_scrap_reason_summary": ("Shell", "reason_code"),
+            "case_19_downtime_duration_summary": ("Shell", "start_utc"),
+            "case_20_packout_estimate": ("Shell", "units_per_carton"),
+            "case_21_capacity_gap_review": ("Shell", "available_minutes"),
         }
         use_cases = (ROOT / "docs" / "USE_CASES.md").read_text(encoding="utf-8")
         for case_name, (prompt_marker, fixture_marker) in manufacturing_cases.items():

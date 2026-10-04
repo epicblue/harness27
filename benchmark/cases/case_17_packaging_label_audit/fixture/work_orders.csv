@@ -1,0 +1,4 @@
+work_order_id,finished_sku,finished_lot,label_revision
+WO-701,SKU-100,LOT-701,REV-C
+WO-702,SKU-200,LOT-702,REV-A
+WO-703,SKU-300,LOT-703,REV-B

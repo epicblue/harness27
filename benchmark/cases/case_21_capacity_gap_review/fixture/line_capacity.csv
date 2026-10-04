@@ -1,0 +1,3 @@
+work_date,sku,line_id,available_minutes,ideal_cycle_seconds
+2026-10-20,SKU-A,LINE-A,420,30
+2026-10-20,SKU-B,LINE-B,800,60

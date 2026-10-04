@@ -1,0 +1,12 @@
+我是生产主管，需要根据合成班次计数生成 OEE 汇总，供人工比较与复盘。请读取 shift_metrics.csv 和 oee_policy.json，只新增 oee_report.json，不修改输入。
+
+计算规则：
+1. run_minutes = planned_minutes - downtime_minutes。
+2. availability = run_minutes / planned_minutes。
+3. performance = ideal_cycle_seconds × total_units / (run_minutes × 60)。
+4. quality = good_units / total_units；OEE = availability × performance × quality。
+5. availability、performance、quality、oee 均按 oee_policy.json 的 decimal_places 四舍五入；不要截断或把比例转换为百分数。run_minutes 保持整数。
+6. 每个班次输出 line_id、shift_id、run_minutes、availability、performance、quality、oee；每个字段只能出现一次。按 shift_id、line_id 升序排列。
+7. 只写 oee_report.json；不要调用 Shell、联网、访问外部服务或控制产线。
+
+完成前核对停机时间扣减、秒与分钟换算、总产量与良品数、四项比例精度、排序和 JSON 格式。该报表只基于合成数据，不代表设备实时状态或操作指令。

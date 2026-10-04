@@ -1,0 +1,10 @@
+我是计量设备管理员，需要依据合成资产清单生成校准到期复核表。请读取 equipment_calibration.csv 和 review_policy.json，只新增 calibration_review.json；不修改输入。
+
+规则：
+1. due_date = last_calibration_date 加 interval_days 个日历日。
+2. 以 policy 的 as_of_date 为复核日。due_date 早于复核日时 status="overdue"；否则若 days_until_due 小于或等于 due_soon_window_days（含当天）则为 "due_soon"；其余为 "current"。
+3. days_until_due 是 due_date - as_of_date 的有符号整日差；未来为正，逾期为负。
+4. JSON 数组每项只含 equipment_id、due_date（YYYY-MM-DD）、status、days_until_due；按 due_date、equipment_id 升序。
+5. 只写 calibration_review.json；不要调用 Shell、联网、锁定设备、改资产记录或访问外部系统。
+
+完成前核对闰年/日历日加法、复核日边界、窗口末日、负天数、排序和字段。结果只是合成数据上的提醒清单，不表示设备已校准或已停用。

@@ -1,0 +1,20 @@
+{
+  "title": "按生产影响和设备关键性整理维修事件",
+  "category": "maintenance_planning",
+  "difficulty": "medium",
+  "skills": ["csv_parsing", "policy_lookup", "rule_based_classification", "prioritization", "structured_output"],
+  "shell": "disabled",
+  "user_story": {
+    "as_a": "设备维护协调员",
+    "i_want": "依据安全标记、产线影响和设备关键性给合成维修事件分级并排序",
+    "so_that": "维护团队可以先人工查看影响最高的事件并参考政策响应窗口"
+  },
+  "acceptance_criteria": [
+    {"id": "AC-01", "requirement": "每个事件恰好输出一条记录，字段仅为 event_id、asset_id、priority、response_window_minutes。"},
+    {"id": "AC-02", "requirement": "优先级严格按 maintenance_policy.json 的条件顺序判定，安全标记优先于其他规则。"},
+    {"id": "AC-03", "requirement": "response_window_minutes 按映射后的优先级从 policy 查找。"},
+    {"id": "AC-04", "requirement": "按 priority_order、observed_at_utc、event_id 升序输出。"},
+    {"id": "AC-05", "requirement": "只新增 maintenance_queue.json；不派发真实维修工单、不控制设备、不调用 Shell 或外部系统。"}
+  ],
+  "out_of_scope": ["诊断根因或提供维修操作步骤", "自动停机、复位或控制设备", "创建或派发真实维修工单", "联系操作员或修改 CMMS"]
+}

@@ -437,6 +437,136 @@ python -m unittest discover -s tests -v
 
 报告仅是合成数据上的追溯范围草案，不是风险判定、召回或冻结指令；本次改动没有进行 27B 模型实测。
 
+## 制造业用户故事（续）
+
+以下十个 smoke case 均使用合成 fixture，Shell 禁用。可在仓库根目录运行离线测试（不调用模型）：
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+### 场景十三：汇总生产班次 OEE（`case_12_oee_shift_report`）
+
+> 作为生产主管，我想按产线和班次从合成生产计数计算可用率、性能、质量率和 OEE，以便团队可以用一致口径比较班次表现并安排人工复盘，而不是依赖手工表格计算。
+
+- **触发/输入：** 收到 `shift_metrics.csv` 和 `oee_policy.json`，需要制作班次评审摘要。
+- **AC-01：** 每班一条记录，字段仅为 line_id、shift_id、run_minutes、availability、performance、quality、oee。
+- **AC-02：** `run_minutes = planned_minutes - downtime_minutes`；availability = run/planned；performance = ideal_cycle_seconds × total_units / (run_minutes × 60)；quality = good_units / total_units。
+- **AC-03：** OEE 为三个比例相乘，比例按 policy 指定精度四舍五入，不转为百分数。
+- **AC-04：** 按 shift_id、line_id 升序；计数为整数，比例为 JSON 数值。
+- **AC-05：** 只生成 `oee_report.json`，不改输入、不调用 Shell/网络、不控制设备。
+- **不在范围内：** 更改生产参数、推断停机责任或向真实 MES 写入数据。
+
+### 场景十四：复核设备校准日期（`case_13_calibration_due_review`）
+
+> 作为计量设备管理员，我想按最近校准日期、校准周期和复核日期生成设备到期状态清单，以便团队可以提前安排人工校准复核，并发现已经超过计划日期的设备。
+
+- **触发/输入：** 需要复核 `equipment_calibration.csv` 中的设备；日期基准和提醒窗口来自 `review_policy.json`。
+- **AC-01：** 每台设备一条记录，字段仅为 equipment_id、due_date、status、days_until_due。
+- **AC-02：** due_date 为最近校准日期加 interval_days 个日历日。
+- **AC-03：** 到期日早于复核日为 `overdue`；当日到提醒窗口末日（含）为 `due_soon`；更晚为 `current`。
+- **AC-04：** days_until_due 为有符号日差，按 due_date、equipment_id 升序。
+- **AC-05：** 只生成 `calibration_review.json`，不锁定设备、不改资产记录、不调用 Shell/外部系统。
+- **不在范围内：** 执行校准、认证精度或连接真实 CMMS/QMS。
+
+### 场景十五：按影响整理维修事件队列（`case_14_maintenance_event_triage`）
+
+> 作为设备维护协调员，我想依据安全标记、产线影响和设备关键性给合成维修事件分级并排序，以便维护团队可以先人工查看影响最高的事件并参考政策响应窗口。
+
+- **触发/输入：** 收到 `maintenance_events.csv` 中的事件和 `maintenance_policy.json`。
+- **AC-01：** 每个事件一条记录，字段仅为 event_id、asset_id、priority、response_window_minutes。
+- **AC-02：** 按 policy 的条件优先级判定：安全标记优先；否则停线为 P1、关键设备降产为 P2、其他降产为 P3、无生产影响为 P4。
+- **AC-03：** 响应窗口按优先级从 policy 查找。
+- **AC-04：** 按 priority_order、事件时间、event_id 排序。
+- **AC-05：** 只生成 `maintenance_queue.json`，不派发工单、不停机或控制设备。
+- **不在范围内：** 根因诊断、维修操作指导、真实 CMMS 工单或设备操作。
+
+### 场景十六：生成换型顺序建议（`case_15_changeover_sequence_plan`）
+
+> 作为生产排程员，我想按既定优先级和交期顺序排列合成工单，并计算相邻产品族之间的换型时间，以便班组可以审核一个透明、可复现的换型计划及其准备时间。
+
+- **触发/输入：** `production_orders.csv` 与 `changeover_policy.json` 中有一批待评审工单及产品族换型矩阵。
+- **AC-01：** 每个工单恰好一次，字段仅为 sequence、order_id、product_family、setup_minutes_before。
+- **AC-02：** 按 priority_order、due_date_utc、order_id 排序；不另行优化顺序。
+- **AC-03：** 首单从 initial_family 切换；后续从前一工单产品族切换，时间从矩阵查找。
+- **AC-04：** 序号从 1 连续递增，换型分钟与矩阵一致。
+- **AC-05：** 只生成 `changeover_plan.json`，不下达排程或控制生产设备。
+- **不在范围内：** 最短路径优化、未提供的设备/人员约束或真实生产指令。
+
+### 场景十七：核对采购订单与来料数量（`case_16_supplier_receipt_reconciliation`）
+
+> 作为来料计划员，我想将采购订单行与多次收货记录汇总，区分已接收、拒收、未到和超收数量，以便团队可以在人工复核时发现交付差异，而不把拒收数量误当成合格库存。
+
+- **触发/输入：** 对 `po_lines.csv` 和 `receipts.csv` 做合成数据对账。
+- **AC-01：** 每个订单行一条记录，按 po_id、line_id 排序。
+- **AC-02：** 分别汇总 accepted_qty、rejected_qty；received_qty 是两者之和，拒收也算已到货但不算合格库存。
+- **AC-03：** outstanding_qty = max(ordered_qty - received_qty, 0)；少于、等于、大于订单量分别标 `short_received`、`complete`、`over_received`。
+- **AC-04：** 输出字段包含订单行、SKU、订购/接收/拒收/到货/未到数量和状态；ID 为字符串，数量为整数。
+- **AC-05：** 只生成 `receipt_reconciliation.json`，不入库、不修改采购单或联系供应商。
+- **不在范围内：** 实物验收、库存过账和 ERP/WMS 操作。
+
+### 场景十八：审核成品包装标签差异（`case_17_packaging_label_audit`）
+
+> 作为包装质量检验员，我想把合成打印标签上的 SKU、成品批次和版本与工单主数据逐项比对，以便包装人员可以人工发现错标风险，而不把不匹配标签贴到产品或托盘上。
+
+- **触发/输入：** 收到 `printed_labels.csv`，并可用 `work_orders.csv` 和 `label_policy.json` 核对。
+- **AC-01：** 每个 label_id 一条结果，仅含 label_id、work_order_id、status、mismatch_fields。
+- **AC-02：** 精确比较 SKU、lot、label_revision；完全相同为 `match`，否则为 `mismatch` 并列出差异字段。
+- **AC-03：** 无对应工单时为 `unknown_work_order`，差异字段仅为 work_order_id。
+- **AC-04：** 标签按 ID 升序，差异字段按 policy 顺序列出。
+- **AC-05：** 只生成 `label_audit.json`，不打印/作废标签、不更改工单。
+- **不在范围内：** 实物贴标、产品放行或连接真实打印机/MES/WMS。
+
+### 场景十九：汇总报废原因码（`case_18_scrap_reason_summary`）
+
+> 作为制造质量分析员，我想按产品和报废原因码汇总合成损耗数量及事件数，并标记未映射原因码，以便团队可以看见待复核的损耗分布，而不让模型臆测根本原因。
+
+- **触发/输入：** `scrap_events.csv` 与原因码映射 `scrap_reason_map.json`。
+- **AC-01：** 按 sku、reason_code 分组，汇总 quantity 和事件行数。
+- **AC-02：** 类别只能使用 policy 映射；未知代码标为 `unmapped`，不得猜测。
+- **AC-03：** 每组一条记录，仅含 sku、reason_code、category、scrap_units、event_count。
+- **AC-04：** 按 SKU、原因码升序，数量与事件数为正整数。
+- **AC-05：** 只生成 `scrap_summary.json`，不改工艺/物料/生产记录。
+- **不在范围内：** 根因分析、纠正措施或真实 QMS/MES 写入。
+
+### 场景二十：汇总设备停机时长（`case_19_downtime_duration_summary`）
+
+> 作为设备可靠性分析员，我想从合成停机事件的 UTC 起止时间计算各设备和原因码的累计分钟数与事件数，以便维护团队可以用可复核的统计摘要开展后续分析，而不依赖手工计时。
+
+- **触发/输入：** 收到以 UTC 记录的 `downtime_events.csv` 与时间政策。
+- **AC-01：** 每个 asset_id、reason_code 组合一条记录，仅含 asset_id、reason_code、event_count、downtime_minutes。
+- **AC-02：** 持续分钟为 end_utc 减 start_utc，同组累加。
+- **AC-03：** event_count 为行数，downtime_minutes 为整数。
+- **AC-04：** 按 asset_id、reason_code 升序，无遗漏、无重复。
+- **AC-05：** 只生成 `downtime_summary.json`，不控制设备或修改日志。
+- **不在范围内：** 推断停机根因、启停/复位设备或创建维修工单。
+
+### 场景二十一：估算纸箱与托盘需求（`case_20_packout_estimate`）
+
+> 作为包装计划员，我想按 SKU 包装规格把合成成品数量换算为满箱、尾箱和托盘估算，以便团队可以在人工审核时预估包装物料和托盘需求。
+
+- **触发/输入：** 订单数量来自 `finished_orders.csv`，每箱/每托规格来自 `packaging_specs.json`。
+- **AC-01：** 每个订单一条记录，包含订单、SKU、单位数、满箱数、尾箱余数、总箱数、托盘数和末托箱数。
+- **AC-02：** 满箱数和尾箱单位数由商和余数决定；有余数的尾箱仍占一个箱位。
+- **AC-03：** 托盘数向上取整；整托时末托箱数为每托容量，零件数订单则为零箱零托。
+- **AC-04：** 按 order_id 升序，数量字段为整数。
+- **AC-05：** 只生成 `packout_estimate.json`，不打印标签、不打包或发运实体货物。
+- **不在范围内：** 托盘堆码/重量优化、发运预约或库存变更。
+
+### 场景二十二：复核需求与产线可用产能（`case_21_capacity_gap_review`）
+
+> 作为产能计划员，我想把合成产品需求与对应产线的可用分钟数和标准节拍进行比较，以便团队可以在排产评审前识别产能余量或缺口，而不把估算结果误当成已确认计划。
+
+- **触发/输入：** `production_demand.csv` 与 `line_capacity.csv` 提供按日期/SKU 对应的需求和能力快照。
+- **AC-01：** 每个日期/SKU 一条记录，仅含 work_date、sku、line_id、demand_units、required_run_minutes、available_minutes、capacity_gap_minutes、status。
+- **AC-02：** 需求分钟 = ceil(demand_units × ideal_cycle_seconds / 60)。
+- **AC-03：** 缺口 = max(需求分钟 - 可用分钟, 0)；零缺口为 `capacity_sufficient`，否则为 `capacity_gap`。
+- **AC-04：** 按日期、SKU 升序，分钟和数量为整数。
+- **AC-05：** 只生成 `capacity_review.json`，不重分配产线、不修改排产或释放工单。
+- **不在范围内：** 跨线优化、换型/人员/良率推断，或真实 MES/APS 操作。
+
+以上均为合成数据上的评测任务，只生成待人工审核的报告或计划，不连接制造现场系统，也没有在本次改动中进行 27B 模型实测。
+
 ## 把业务需求写成好任务
 
 无论是运营、数据还是代码任务，建议把 prompt 写成一个可执行验收清单：
@@ -466,4 +596,14 @@ python -m unittest discover -s tests -v
 | 制造批次质量复核（合成测量数据） | `benchmark/runner.py --case case_09_quality_inspection_review` | 否 | 是，检查规格边界与抽样状态 |
 | 生产工单物料齐套核对（合成 allocation 快照） | `benchmark/runner.py --case case_10_production_material_readiness` | 否 | 是，检查 BOM 需求与短缺 |
 | 组件批次追溯（合成数据，仅生成范围报告） | `benchmark/runner.py --case case_11_material_lot_traceability` | 否 | 是，检查批次去重与发运关联 |
+| 班次 OEE 指标汇总（合成计数） | `benchmark/runner.py --case case_12_oee_shift_report` | 否 | 是，核对 OEE 公式与精度 |
+| 设备校准到期复核（合成资产） | `benchmark/runner.py --case case_13_calibration_due_review` | 否 | 是，核对日期边界和状态 |
+| 维修事件分级（合成设备事件） | `benchmark/runner.py --case case_14_maintenance_event_triage` | 否 | 是，核对政策优先级 |
+| 工单换型顺序计划（仅计划） | `benchmark/runner.py --case case_15_changeover_sequence_plan` | 否 | 是，核对排序与切换时间 |
+| 采购订单来料数量核对（合成收货） | `benchmark/runner.py --case case_16_supplier_receipt_reconciliation` | 否 | 是，核对收货、拒收与差异 |
+| 包装标签主数据审核（合成标签） | `benchmark/runner.py --case case_17_packaging_label_audit` | 否 | 是，核对标签字段差异 |
+| 报废原因码汇总（合成事件） | `benchmark/runner.py --case case_18_scrap_reason_summary` | 否 | 是，核对聚合与未知代码 |
+| 设备停机时长统计（合成事件） | `benchmark/runner.py --case case_19_downtime_duration_summary` | 否 | 是，核对 UTC 时间差 |
+| 成品纸箱与托盘估算（仅计划） | `benchmark/runner.py --case case_20_packout_estimate` | 否 | 是，核对整箱、尾箱与托盘数 |
+| 需求与产线能力差额（合成快照） | `benchmark/runner.py --case case_21_capacity_gap_review` | 否 | 是，核对节拍和分钟缺口 |
 | 编辑代码并调用测试命令 | 隔离环境中的 case 03 或 CLI | 是 | case 03 有固定 verifier |

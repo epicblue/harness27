@@ -1,0 +1,9 @@
+我是设备可靠性分析员，需要按设备和原因码汇总合成停机事件。请读取 downtime_events.csv 和 downtime_policy.json，只新增 downtime_summary.json。
+
+规则：
+1. 所有时间均为 UTC；每条事件的 downtime_minutes = end_utc - start_utc 的整分钟数（结束时间晚于开始时间）。
+2. 按 asset_id、reason_code 分组；event_count 为事件行数，downtime_minutes 为各事件时长总和。
+3. JSON 数组每项只含 asset_id、reason_code、event_count、downtime_minutes，按 asset_id、reason_code 升序；数值为 JSON 整数。
+4. 只写 downtime_summary.json；不调用 Shell、联网、推断停机原因、控制设备或修改原始日志。
+
+完成前核对跨分钟时间差、各组事件条数和总分钟数、排序与字段。该统计使用合成事件，不代表设备实时状态或维修判断。

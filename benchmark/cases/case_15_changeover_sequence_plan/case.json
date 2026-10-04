@@ -1,0 +1,20 @@
+{
+  "title": "按优先级和交期生成换型顺序计划",
+  "category": "production_planning",
+  "difficulty": "medium",
+  "skills": ["csv_parsing", "policy_lookup", "deterministic_scheduling", "matrix_lookup", "integer_arithmetic", "structured_output"],
+  "shell": "disabled",
+  "user_story": {
+    "as_a": "生产排程员",
+    "i_want": "按既定优先级和交期顺序排列合成工单，并计算相邻产品族之间的换型时间",
+    "so_that": "班组可以审核一个透明、可复现的换型计划及其准备时间"
+  },
+  "acceptance_criteria": [
+    {"id": "AC-01", "requirement": "每个工单恰好输出一次，字段仅为 sequence、order_id、product_family、setup_minutes_before。"},
+    {"id": "AC-02", "requirement": "排序严格按 policy 的 priority_order、due_date_utc、order_id。"},
+    {"id": "AC-03", "requirement": "首单从 initial_family 查换型矩阵；其余工单从前一工单 product_family 查矩阵。"},
+    {"id": "AC-04", "requirement": "换型分钟数必须与矩阵精确一致，sequence 从 1 连续递增。"},
+    {"id": "AC-05", "requirement": "只新增 changeover_plan.json；不启动、暂停或改写生产工单，不调用 Shell 或产线系统。"}
+  ],
+  "out_of_scope": ["优化全局最短换型路径", "考虑未提供的设备/人员约束", "实际下达排程或控制产线", "修改工单优先级、交期或产品族"]
+}

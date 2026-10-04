@@ -1,0 +1,9 @@
+我是制造质量分析员，需要把合成报废事件按产品和原因码汇总，供团队人工复核。请读取 scrap_events.csv 和 scrap_reason_map.json，只新增 scrap_summary.json。
+
+规则：
+1. 按 sku、reason_code 分组；scrap_units = quantity 之和，event_count = 事件行数。
+2. category 必须按 scrap_reason_map.json 精确查找；没有映射的 reason_code 使用 "unmapped"，不得猜测原因。
+3. 输出 JSON 数组，每项只含 sku、reason_code、category、scrap_units、event_count。按 sku、reason_code 升序，计数字段为 JSON 整数。
+4. 只写 scrap_summary.json；不调用 Shell、联网、推断根因、调整设备/工艺、变更库存或访问外部系统。
+
+完成前核对分组总量、事件条数、已映射与未知原因码、排序和输出字段。该汇总不是根因分析或纠正措施建议。

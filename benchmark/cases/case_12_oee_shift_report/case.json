@@ -1,0 +1,20 @@
+{
+  "title": "汇总生产班次的 OEE 指标",
+  "category": "operations_metrics",
+  "difficulty": "medium",
+  "skills": ["csv_parsing", "oee_calculation", "numeric_accuracy", "policy_lookup", "structured_output"],
+  "shell": "disabled",
+  "user_story": {
+    "as_a": "生产主管",
+    "i_want": "按产线和班次从合成生产计数计算可用率、性能、质量率和 OEE",
+    "so_that": "团队可以用一致口径比较班次表现并安排人工复盘，而不是依赖手工表格计算"
+  },
+  "acceptance_criteria": [
+    {"id": "AC-01", "requirement": "每个输入班次恰好输出一条记录，字段仅为 line_id、shift_id、run_minutes、availability、performance、quality、oee。"},
+    {"id": "AC-02", "requirement": "run_minutes = planned_minutes - downtime_minutes；可用率、性能和质量率按 prompt 公式计算。"},
+    {"id": "AC-03", "requirement": "OEE 等于 availability × performance × quality；比例按 policy 的小数位数四舍五入。"},
+    {"id": "AC-04", "requirement": "按 shift_id、line_id 升序输出，计数为整数，比例为 JSON 数值。"},
+    {"id": "AC-05", "requirement": "只新增 oee_report.json；不修改输入、不调用 Shell、联网或控制设备。"}
+  ],
+  "out_of_scope": ["更改设备速度或生产参数", "控制产线或采集实时传感器", "将 OEE 结果写入真实 MES", "推断停机原因或绩效责任"]
+}

@@ -1,0 +1,5 @@
+receipt_id,po_id,line_id,accepted_qty,rejected_qty
+RC-801,PO-601,10,60,5
+RC-802,PO-601,10,30,0
+RC-803,PO-601,20,45,5
+RC-804,PO-602,10,42,3

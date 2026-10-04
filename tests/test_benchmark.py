@@ -1,4 +1,5 @@
 import json
+from importlib import import_module
 from pathlib import Path
 import shutil
 import tempfile
@@ -306,6 +307,24 @@ class BenchmarkVerificationTests(unittest.TestCase):
 
             target.write_text(json.dumps(expected))
             self.assertFalse(verify_case_11(ws, [("tool", {"name": "shell"})]))
+
+    def test_cases_12_to_21_manufacturing_verifiers_are_deterministic_and_shell_free(self):
+        for number in range(12, 22):
+            case_name = f"case_{number:02d}_"
+            case_dir = next(path for path in CASES.iterdir() if path.name.startswith(case_name))
+            verifier_module = import_module(f"benchmark.cases.{case_dir.name}.verify")
+            with self.subTest(case=case_dir.name), tempfile.TemporaryDirectory() as tmpdir:
+                ws = Path(tmpdir)
+                self.copy_fixture(case_dir.name, ws)
+                target = ws / verifier_module.OUTPUT_FILENAME
+                target.write_text(json.dumps(verifier_module.EXPECTED))
+                self.assertTrue(verifier_module.verify(ws, []))
+
+                target.write_text(json.dumps([] if isinstance(verifier_module.EXPECTED, list) else {}))
+                self.assertFalse(verifier_module.verify(ws, []))
+
+                target.write_text(json.dumps(verifier_module.EXPECTED))
+                self.assertFalse(verifier_module.verify(ws, [("tool", {"name": "shell"})]))
 
 
 if __name__ == "__main__":

@@ -1,0 +1,5 @@
+{
+  "exact_match_required": true,
+  "mismatch_field_order": ["sku", "lot", "label_revision"],
+  "unknown_order_status": "unknown_work_order"
+}

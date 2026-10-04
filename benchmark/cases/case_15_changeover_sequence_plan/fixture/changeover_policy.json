@@ -1,0 +1,10 @@
+{
+  "initial_family": "F-A",
+  "priority_order": ["P1", "P2", "P3"],
+  "order_tiebreak": ["due_date_utc_ascending", "order_id_ascending"],
+  "changeover_minutes_by_family": {
+    "F-A": {"F-A": 0, "F-B": 20, "F-C": 35},
+    "F-B": {"F-A": 15, "F-B": 0, "F-C": 25},
+    "F-C": {"F-A": 30, "F-B": 10, "F-C": 0}
+  }
+}

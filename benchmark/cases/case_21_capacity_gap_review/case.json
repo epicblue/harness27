@@ -1,0 +1,20 @@
+{
+  "title": "核对产品需求与产线可用分钟数",
+  "category": "production_planning",
+  "difficulty": "medium",
+  "skills": ["csv_parsing", "multi_file_join", "time_unit_conversion", "capacity_planning", "shortage_analysis", "structured_output"],
+  "shell": "disabled",
+  "user_story": {
+    "as_a": "产能计划员",
+    "i_want": "把合成产品需求与对应产线的可用分钟数和标准节拍进行比较",
+    "so_that": "团队可以在排产评审前识别产能余量或缺口，而不把估算结果误当成已确认计划"
+  },
+  "acceptance_criteria": [
+    {"id": "AC-01", "requirement": "每个日期与 SKU 恰好输出一条记录，字段仅为 work_date、sku、line_id、demand_units、required_run_minutes、available_minutes、capacity_gap_minutes、status。"},
+    {"id": "AC-02", "requirement": "required_run_minutes = ceil(demand_units × ideal_cycle_seconds / 60)。"},
+    {"id": "AC-03", "requirement": "capacity_gap_minutes = max(required_run_minutes - available_minutes, 0)；零缺口为 capacity_sufficient，否则为 capacity_gap。"},
+    {"id": "AC-04", "requirement": "按 work_date、sku 升序连接并输出，分钟数为整数。"},
+    {"id": "AC-05", "requirement": "只新增 capacity_review.json；不安排或释放工单、不调整班次、不调用 Shell 或生产系统。"}
+  ],
+  "out_of_scope": ["跨产线优化或重新分配需求", "考虑未提供的换型、良率或人员因素", "自动改排产或释放工单", "连接 MES/APS 或控制设备"]
+}

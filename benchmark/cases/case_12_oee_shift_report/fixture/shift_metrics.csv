@@ -1,0 +1,3 @@
+line_id,shift_id,planned_minutes,downtime_minutes,ideal_cycle_seconds,total_units,good_units
+LINE-1,SHIFT-1,480,60,30,800,780
+LINE-2,SHIFT-2,450,30,30,756,720

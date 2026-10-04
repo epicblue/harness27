@@ -1,0 +1,10 @@
+我是生产排程员，需要为合成工单生成可审核的换型顺序计划。请读取 production_orders.csv 和 changeover_policy.json，只新增 changeover_plan.json。
+
+规则：
+1. 按 policy 的 priority_order 排序；同优先级按 due_date_utc、order_id 升序。不自行优化或重排规则。
+2. 第一张工单从 initial_family 切换到其 product_family；之后从前一工单的 product_family 切换到当前工单的 product_family。
+3. setup_minutes_before 从 changeover_minutes_by_family 的 from/to 矩阵精确查找；相同产品族的换型时间为矩阵给出的值。
+4. 输出按顺序的 JSON 数组，每项仅含 sequence（从 1 开始的整数）、order_id、product_family、setup_minutes_before（整数）。
+5. 只写 changeover_plan.json；不调用 Shell、联网、实际下达排程或控制生产设备。
+
+完成前核对优先级/交期排序、首单初始产品族、每次前序产品族转换和序号。该结果是合成数据上的计划建议，不是最短路径优化或生产指令。

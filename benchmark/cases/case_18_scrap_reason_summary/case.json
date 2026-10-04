@@ -1,0 +1,20 @@
+{
+  "title": "按报废原因码汇总合成损耗数量",
+  "category": "quality_operations",
+  "difficulty": "easy",
+  "skills": ["csv_parsing", "policy_lookup", "aggregation", "unknown_code_handling", "structured_output"],
+  "shell": "disabled",
+  "user_story": {
+    "as_a": "制造质量分析员",
+    "i_want": "按产品和报废原因码汇总合成损耗数量及事件数，并标记未映射原因码",
+    "so_that": "团队可以看见待复核的损耗分布，而不让模型臆测根本原因"
+  },
+  "acceptance_criteria": [
+    {"id": "AC-01", "requirement": "按 sku、reason_code 分组，scrap_units 为 quantity 总和，event_count 为记录条数。"},
+    {"id": "AC-02", "requirement": "category 严格使用 scrap_reason_map.json 映射；未映射代码标为 unmapped，不猜测类别。"},
+    {"id": "AC-03", "requirement": "每个分组恰好一条记录，字段仅为 sku、reason_code、category、scrap_units、event_count。"},
+    {"id": "AC-04", "requirement": "按 sku、reason_code 升序；数量和事件数为正整数。"},
+    {"id": "AC-05", "requirement": "只新增 scrap_summary.json；不改变工艺、物料或生产记录，不调用 Shell 或外部系统。"}
+  ],
+  "out_of_scope": ["推断或确认根本原因", "变更设备参数、工艺或供应商", "自动报废/返工或调整库存", "写入真实 QMS/MES"]
+}

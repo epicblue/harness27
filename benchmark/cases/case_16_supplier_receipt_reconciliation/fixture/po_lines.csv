@@ -1,0 +1,5 @@
+po_id,line_id,sku,ordered_qty
+PO-601,10,MAT-A,100
+PO-601,20,MAT-B,50
+PO-602,10,MAT-C,40
+PO-603,10,MAT-D,10

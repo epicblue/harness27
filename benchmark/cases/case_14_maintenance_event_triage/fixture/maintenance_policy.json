@@ -1,0 +1,12 @@
+{
+  "priority_order": ["P1", "P2", "P3", "P4"],
+  "priority_by_condition": {
+    "safety_flag_true": "P1",
+    "production_impact_stopped": "P1",
+    "production_impact_reduced_criticality_A": "P2",
+    "production_impact_reduced_other": "P3",
+    "production_impact_none": "P4"
+  },
+  "response_window_minutes_by_priority": {"P1": 30, "P2": 120, "P3": 480, "P4": 1440},
+  "rule_precedence": ["safety_flag", "stopped", "reduced_criticality_A", "reduced_other", "none"]
+}

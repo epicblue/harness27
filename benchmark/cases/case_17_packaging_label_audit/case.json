@@ -1,0 +1,20 @@
+{
+  "title": "核对成品标签与工单主数据",
+  "category": "quality_operations",
+  "difficulty": "medium",
+  "skills": ["csv_parsing", "multi_file_join", "exact_matching", "validation", "structured_output"],
+  "shell": "disabled",
+  "user_story": {
+    "as_a": "包装质量检验员",
+    "i_want": "把合成打印标签上的 SKU、成品批次和版本与工单主数据逐项比对",
+    "so_that": "包装人员可以人工发现错标风险，而不把不匹配标签贴到产品或托盘上"
+  },
+  "acceptance_criteria": [
+    {"id": "AC-01", "requirement": "每个打印标签恰好输出一条结果，字段仅为 label_id、work_order_id、status、mismatch_fields。"},
+    {"id": "AC-02", "requirement": "已知工单的 SKU、lot 和 label revision 与主数据精确匹配时为 match；不匹配时逐字段列出差异。"},
+    {"id": "AC-03", "requirement": "未找到 work_order_id 时 status 为 unknown_work_order，mismatch_fields 只含 work_order_id。"},
+    {"id": "AC-04", "requirement": "标签按 label_id 升序，差异字段按 policy 顺序输出，所有标签均不得遗漏或重复。"},
+    {"id": "AC-05", "requirement": "只新增 label_audit.json；不打印/作废标签、不修改工单、不调用 Shell 或外部系统。"}
+  ],
+  "out_of_scope": ["自动打印、贴附或作废实体标签", "放行或隔离产品", "修改 SKU、lot 或版本主数据", "连接真实 MES、WMS 或打印机"]
+}
