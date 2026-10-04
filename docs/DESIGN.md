@@ -30,6 +30,9 @@ flowchart LR
     T -. 显式启用且不安全 .-> SH[当前用户 Shell]
     AG --> TR[trace 回调]
     TR --> JL[私有 JSONL 轨迹]
+    JL --> AN[本地分析器]
+    SV[可选问卷 CSV] --> AN
+    AN --> AR[脱敏 JSON/CSV 分析报告]
 
     BR[benchmark runner] --> LC
     BR --> AG
@@ -42,6 +45,7 @@ flowchart LR
 | 模块 | 文件 | 单一职责 | 重要约束 |
 |---|---|---|---|
 | CLI | `harness27/cli.py` | 参数解析、审批回调、轨迹存储、返回码。 | 交互中精确输入 `yes` 才批准；非 TTY 自动拒绝。 |
+| 本地分析器 | `harness27/analytics.py` | 汇总 CLI JSONL 轨迹，可选关联问卷 CSV，写出脱敏 JSON/CSV 报告。 | 只在本机运行；使用字段白名单；不会读取 benchmark 报告或发送网络请求。 |
 | 模型客户端 | `harness27/client.py` | 发送 OpenAI Chat Completions 请求、解析响应、统一连接错误。 | 仅回环 IP；忽略代理；拒绝重定向；不回显 HTTP 错误正文。 |
 | Agent | `harness27/agent.py` | 管理 messages、轮数与字符预算、验证 tool-call 外层结构、执行工具并把结果交回模型。 | 每轮最多 16 个调用；工具调用按序执行；无自动重试。 |
 | 工具层 | `harness27/tools.py` | 构造工具 schema，执行 workspace 文件操作及可选 Shell。 | 文件访问不是 OS 沙箱；Shell 是当前用户权限下的 `shell=True` 命令。 |
@@ -50,7 +54,7 @@ flowchart LR
 
 ## 2.1 类图：运行时对象与数据契约
 
-下图中的 `CLI`、`BenchmarkRunner` 是 Python **模块**，不是实例化的类；`RunReport` 和 `CaseResult` 是 JSON 对象 schema，不是 Python dataclass。`Agent`、`LocalClient`、`Tools`、`BenchmarkCase` 和异常类是代码中的实际类。`CompletionClient` 是 Agent 所需的 duck-typed 接口，当前未定义 Python `Protocol`/ABC；`ApprovalCallback` / `TraceCallback` 也是函数回调契约。类图关系用于说明依赖方向。
+下图中的 `CLI`、`BenchmarkRunner`、`Analytics` 是 Python **模块**，不是实例化的类；`RunReport`、`CaseResult`、`AnalyticsReport`、`TraceFile` 和 `SurveyRow` 表示 JSON/JSONL/CSV 数据 schema，不是 Python dataclass。`Agent`、`LocalClient`、`Tools`、`BenchmarkCase` 和异常类是代码中的实际类。`CompletionClient` 是 Agent 所需的 duck-typed 接口，当前未定义 Python `Protocol`/ABC；`ApprovalCallback` / `TraceCallback` 也是函数回调契约。类图关系用于说明依赖方向。
 
 ```mermaid
 classDiagram
@@ -110,6 +114,31 @@ classDiagram
         <<interface>>
         +__call__(event, data)
     }
+    class Analytics {
+        <<module>>
+        +analyze_trace(path) dict
+        +read_survey_csv(path) tuple
+        +build_report(sessions) dict
+        +render_csv(sessions) str
+        +main(argv) int
+    }
+    class TraceFile {
+        <<schema>>
+        +trace_schema_version
+        +time
+        +event
+    }
+    class SurveyRow {
+        <<schema>>
+        +session_id
+        +task_id
+        +task_category
+        +config_id
+        +task_outcome
+        +independent_verification
+        +ratings
+        +friction_tags
+    }
     class BenchmarkRunner {
         <<module>>
         +discover_cases(selected) list
@@ -147,6 +176,16 @@ classDiagram
         +selected_cases
         +results
         +summary
+    }
+    class AnalyticsReport {
+        <<schema>>
+        +schema_version
+        +summary
+        +by_task_category
+        +by_config_id
+        +survey
+        +sessions
+        +privacy
     }
     class CaseResult {
         <<schema>>
@@ -206,11 +245,14 @@ classDiagram
     BenchmarkRunner ..> RunReport : serializes
     RunReport "1" *-- "0..*" CaseResult : contains
     BenchmarkCase --> CaseResult : fingerprint and labels copied
+    Analytics ..> TraceFile : extracts allowlisted metrics
+    Analytics ..> SurveyRow : optional join by session_id
+    Analytics ..> AnalyticsReport : renders allowlisted JSON/CSV
 ```
 
 ## 2.2 时序图：交互式 harness 完整调用
 
-图中包含初始化、预算/协议失败、最终回答、工具循环和审批分支。`Tools` 只对 `write_file` / `shell` 请求审批；读取和目录列举不询问。图中的 JSONL participant 是 CLI 注入的 `trace` callback；Python API 可以换成其他 callback。终止分支会立即从 `Agent.run` 返回，不会继续下一轮。
+图中包含初始化、预算/协议失败、最终回答、工具循环和审批分支。CLI 为每次运行创建 versioned JSONL 轨迹（每条 event 有 `trace_schema_version=1` 和时间戳）；可选的 `--task-id` / `--task-category` / `--config-id` 仅写入 `start` 元数据，且必须是受限短标签。`Tools` 只对 `write_file` / `shell` 请求审批；读取和目录列举不询问。图中的 JSONL participant 是 CLI 注入的 `trace` callback；Python API 可以换成其他 callback。终止分支会立即从 `Agent.run` 返回，不会继续下一轮。原始 JSONL 含任务和工具数据，不能当作可公开的指标文件。
 
 ```mermaid
 sequenceDiagram
@@ -227,12 +269,12 @@ sequenceDiagram
     participant LOG as JSONL trace
 
     U->>CLI: python -m harness27 task --model ...
-    CLI->>CLI: 解析参数、校验预算
+    CLI->>CLI: 解析参数、校验预算与可选短标签
     CLI->>C: LocalClient(base_url, model, ...)
     CLI->>T: Tools(workspace, allow_shell, approve)
-    CLI->>LOG: 创建 0600 轨迹文件
+    CLI->>LOG: 创建 0600 JSONL；目录请求 0700
     CLI->>A: Agent(client, tools, trace, ...).run(task)
-    A->>LOG: start(task, model)
+    A->>LOG: start(schema=1, time, task, model, optional labels)
 
     loop 每个模型轮次，直到 Agent 返回或耗尽 max_steps
         A->>A: JSON 序列化 messages 并检查 max_context_chars
@@ -260,7 +302,7 @@ sequenceDiagram
                     A-->>CLI: exception
                     CLI-->>U: 输出协议错误并以 1 退出
                 else tool_calls 结构有效
-                    A->>LOG: assistant(message, time, finish_reason, usage)
+                    A->>LOG: assistant(message, monotonic seconds, time, finish_reason, usage, optional reasoning)
                     alt 无 tool_calls，finish_reason=length
                         A->>LOG: finish(length_truncated, partial answer)
                         A-->>CLI: result(length_truncated)
@@ -275,7 +317,7 @@ sequenceDiagram
                         CLI-->>U: 打印答案，退出码 0
                     else 存在 tool_calls
                         loop 按返回顺序处理每个调用，最多 16 个
-                            A->>A: JSON 解析 arguments
+                            A->>A: 启动 monotonic 工具计时；JSON 解析 arguments
                             alt arguments 不是合法 JSON 文本
                                 A->>A: 构造 ok=false 参数错误结果，不调用 Tools
                             else arguments 是合法 JSON
@@ -291,6 +333,7 @@ sequenceDiagram
                                     AP-->>U: 显示完整参数并请求 yes
                                     U-->>AP: yes / 其他输入 / EOF
                                     AP-->>T: true / false
+                                    T->>T: 设置 approval=approved / denied
                                     alt 批准
                                         T->>T: 再解析目标路径
                                         T->>FS: 同目录临时文件写入后 os.replace
@@ -303,6 +346,7 @@ sequenceDiagram
                                     AP-->>U: 显示命令并请求 yes
                                     U-->>AP: yes / 其他输入 / EOF
                                     AP-->>T: true / false
+                                    T->>T: 设置 approval=approved / denied
                                     alt 批准
                                         T->>SH: shell=True，cwd=workspace，带超时
                                         SH-->>T: returncode + 截断输出
@@ -313,7 +357,7 @@ sequenceDiagram
                                     T-->>T: 返回 ok=false 工具错误
                                 end
                             end
-                            A->>LOG: tool(name, arguments, result)
+                            A->>LOG: tool(name, arguments, result + approval marker, monotonic seconds)
                             A->>A: 追加匹配 tool_call_id 的 role=tool 消息
                         end
                         Note over A,M: 下一轮将完整历史重新发给模型；没有自动重试
@@ -334,12 +378,13 @@ sequenceDiagram
 
 - 模型每轮可能返回多个工具调用；Agent 先校验整批调用结构，再按顺序执行工具。arguments JSON 解析失败不会调用 Tools，而是生成工具错误消息交回模型。
 - `write_file` 的 workspace 路径会在审批前校验，字节上限也在审批前检查；批准后执行前会重新解析路径。Shell 不受文件工具路径限制。
-- 工具结果即使是 `ok=false` 也会作为 `role=tool` 消息交回模型，让它可以修正；工具错误本身不代表 Agent 协议异常。
-- 上图为 CLI 路径。库调用者注入的审批和 trace callbacks 可以有不同实现；`Tools` 的默认审批则拒绝写入和 Shell。
+- 工具结果即使是 `ok=false` 也会作为 `role=tool` 消息交回模型，让它可以修正；工具错误本身不代表 Agent 协议异常。`write_file` / `shell` 的 tool result 会带 `approved`、`denied` 或 `not_requested` 决策标记。
+- `assistant.seconds` 以 monotonic clock 计模型请求时间；`tool.seconds` 覆盖参数解析、人工审批等待（若有）和工具执行。每条 JSONL event 的 `time` 是 UTC wall-clock 时间。
+- 上图为 CLI 路径。库调用者注入的审批和 trace callbacks 可以有不同实现；`Tools` 的默认审批则拒绝写入和 Shell。原始 JSONL 仍包含 task、模型内容、工具参数/结果及可能的 reasoning，必须按敏感数据管理。
 
 ## 2.3 时序图：benchmark 单个 trial 与报告生命周期
 
-Runner 在创建模型请求前加载所有 case/verifier 并计算指纹；一批 case 共用 LocalClient，但每个 case/trial 都创建新的 fixture workspace、Tools 和 trace list。所有 trial 串行执行。
+Runner 在创建模型请求前加载所有 case/verifier 并计算指纹；一批 case 共用 LocalClient，但每个实际执行的 case/trial 都创建新的 fixture workspace、Tools 和仅驻内存的 `trace_events`。该事件列表包含 verifier 所需的原始 task、assistant、tool 数据及可能的 reasoning，不作为 JSON 报告写出；报告保存状态、计数、计时、verifier 结果及受限诊断字段。所有 trial 串行执行。
 
 ```mermaid
 sequenceDiagram
@@ -367,11 +412,14 @@ sequenceDiagram
         alt case shell=required 且未传 --allow-shell
             R->>RP: 添加 status=skipped 的 row，不创建 workspace/不调用模型
         else case 可以执行
+            R->>R: 启动 trial monotonic wall timer
             R->>W: 创建唯一临时目录或 --keep-workspaces 目录
             R->>CR: 复制 fixture（拒绝 symlink，忽略 bytecode cache）
             CR-->>W: 只复制普通 fixture 内容
-            R->>T: Tools(root=W, auto-approve, case shell gate)
-            R->>A: Agent(C, T, trace_events).run(prompt)
+            R->>T: Tools(root=W, auto-approve writes, case shell gate)
+            R->>R: 启动 agent monotonic timer
+            R->>A: Agent(C, T, in-memory trace callback).run(prompt)
+            A->>R: 追加 start(task) 到 trace_events
             loop Agent 请求/工具调用轮次
                 A->>T: schemas
                 T-->>A: 文件工具 + 按元数据启用的 Shell schema
@@ -379,27 +427,39 @@ sequenceDiagram
                 C->>M: POST /chat/completions
                 M-->>C: assistant tool_calls 或最终消息
                 C-->>A: 解析后的 message / ModelError
+                A->>R: 追加 assistant event（message、耗时、usage、可选 reasoning）
                 opt 有 tool_calls
+                    A->>A: 启动工具 monotonic timer；解析 arguments
                     A->>T: execute(name, arguments)
                     T->>W: 读取 / 列举 / 原子写入
-                    opt 该 case 同时允许 Shell 且全局显式 opt-in
-                        T->>T: 自动批准 Shell（不安全；由部署外部隔离）
+                    opt write_file 或允许的 Shell 请求审批
+                        T->>T: benchmark approve callback 自动批准
+                        Note over T,W: Shell 仅在全局 --allow-shell 且 case policy 为 optional/required 时可用；非沙箱
                     end
                     W-->>T: result
-                    T-->>A: tool result
-                    A->>A: 记录 trace 并追加 role=tool 历史
+                    T-->>A: tool result（含 approval 决策标记）
+                    A->>R: 追加 tool event（arguments/result/seconds）
+                    A->>A: 追加匹配 tool_call_id 的 role=tool 历史
                 end
             end
+            opt Agent 正常返回或抛出异常
+                A->>R: 追加 finish 或 error event（若 Agent 已发出）
+                A-->>R: result / 捕获的 Agent exception
+            end
+            R->>R: 停止 agent timer；从 events 统计 steps/tools/usage
             Note over R,A: Agent 异常会记入 agent_error；若 workspace 已建立仍继续做 verifier 检查
+            R->>R: 启动 verification monotonic timer
             R->>V: verify(workspace, trace_events)
             V->>W: 独立检查目标产物、原文件 hash 和禁用操作
             W-->>V: 实际文件与数据
             V-->>R: bool 或 verifier exception
-            R->>R: 统计 status、steps、tools、usage、耗时
+            R->>R: 停止 verification timer；记录 verifier 结果/错误
             opt 默认临时工作区
                 R->>W: verifier 后清理 workspace
             end
+            R->>R: 清理后停止 trial timer；记录 agent/verification/elapsed 秒数
             R->>RP: 原子更新单个 case row 和 summary
+            Note over R,RP: 报告不写 prompt 或 raw trace_events；保留受限的错误/verification 输出字段
         end
     end
     R->>RP: 完成时写 status=completed / Ctrl-C 时写 status=interrupted
@@ -407,6 +467,68 @@ sequenceDiagram
 ```
 
 错误分支：若工作区创建失败，Runner 返回 `error` row，不调用 verifier；若 Agent 出现连接/协议异常，已有 workspace 仍会交给 verifier，以免丢掉已经正确生成的产物；verifier 异常则作为 `error`，不计入能力成功率。JSON 报告每个 trial 后原子替换，因此中断时已完成的 row 会保留。
+
+## 2.4 时序图：本地轨迹分析与问卷关联
+
+`harness27.analytics` 是独立的本地后处理流程，不调用模型、不读取 benchmark 报告，也不发网络请求。输入是 CLI JSONL；可选问卷 CSV 用 `session_id` 关联。JSON 与 CSV 导出都由固定字段白名单构建，原始轨迹和问卷应仍按敏感资料管理。
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as 操作者
+    participant CLI as analytics CLI
+    participant P as 本地分析管线
+    participant FS as 本地文件系统
+    participant O as JSON/CSV 输出
+
+    U->>CLI: python -m harness27.analytics --runs-dir ... [--survey-csv ...]
+    CLI->>P: 解析 --format / --output / 输入路径
+    P->>FS: 校验 runs_dir，枚举直接子级 *.jsonl
+    FS-->>P: 普通 trace 文件列表与跳过项计数
+    loop 每个 trace 文件
+        P->>FS: 以 UTF-8 按行读取 JSONL
+        loop 每行记录
+            FS-->>P: JSONL 文本
+            alt JSON 损坏或 event 结构无效
+                P->>P: 增加 trace_issue_count 并继续
+            else 记录可解析
+                P->>P: 解析 event/time；提取指标白名单
+                Note over P: 丢弃任务正文、回答、reasoning、工具参数/结果与模型别名
+            end
+        end
+        P->>P: 计算 session 指标，timeline 最多保留 2000 项
+    end
+    opt 提供 --survey-csv
+        P->>FS: 校验普通文件并读取 CSV
+        FS-->>P: header 与各行数据
+        P->>P: 仅提取固定标签、结果枚举、评分和 friction tags
+        P->>P: 忽略自由文本/未知列；校验后按 session_id 合并
+        P->>P: trace 标签优先；统计冲突、未匹配与无效行
+    end
+    P->>P: 汇总状态、耗时、步骤、工具/审批、usage、分组和问卷统计
+    alt --format json
+        P->>O: summary、分组、sessions、脱敏 timeline、可选 survey
+    else --format csv
+        P->>O: 固定列的逐 session 行
+    end
+    alt --output -
+        O-->>U: stdout；状态与完成计数写 stderr
+    else 输出到文件
+        P->>FS: 拒绝覆盖输入；临时文件写入后原子 replace
+        Note over P,FS: 默认目录请求 0700，POSIX 报告文件 0600
+        FS-->>P: 报告路径
+        P-->>U: 输出路径、完成计数与退出码 0
+    end
+    Note over CLI,FS: 全程本地执行；输入/格式/文件错误写入 stderr 并以 1 退出
+```
+
+### 时序图补充说明
+
+- 分析器仅扫描 `runs_dir` 的直接子级 `*.jsonl`，跳过 symlink/非普通文件；不会递归，也不会读取 benchmark 报告。无法解析的 JSONL 行计入数据质量问题。
+- `session_id` 通常取 trace 文件名；不符合安全格式的文件名会转换为短 hash。事件时间线有 2000 项上限，截断状态会显式记录。
+- `duration_seconds` 根据首末可解析 trace 时间戳计算；`assistant_seconds` 与 `tool_seconds` 来自 trace 中 monotonic 计时。工具耗时包含参数解析、审批等待（如有）与执行。
+- JSON 包含汇总、分组和脱敏 timeline；CSV 是逐 session 白名单列，不含 JSON 的整体 summary。问卷开放文本和未知 CSV 列不会进入任一报告；问卷标签冲突时保留 trace 标签并只记录冲突数。
+- 报告不导出任务正文、模型回答、工具参数/结果、文件路径、reasoning、模型别名或自由文本。原始 JSONL 本身仍可能包含这些敏感内容，报告输出到 stdout 时也须保护接收端。
 
 ## 3. Agent 请求/响应协议
 
