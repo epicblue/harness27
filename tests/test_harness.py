@@ -46,6 +46,8 @@ class HarnessTests(unittest.TestCase):
         self.assertEqual(result["status"], "completed")
         self.assertEqual((self.root / "hello.txt").read_text(), "你好")
         self.assertEqual(client.requests[1][-1]["tool_call_id"], "call1")
+        tool_event = next(data for event, data in self.events if event == "tool")
+        self.assertEqual(tool_event["arguments"], {"path": "hello.txt", "content": "你好"})
         self.assertEqual(self.events[-1][0], "finish")
 
     def test_malformed_arguments_recover(self):

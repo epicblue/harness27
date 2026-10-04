@@ -1,0 +1,5 @@
+invoice_id,customer,billed_amount
+INV-1003,Globex,300.00
+INV-1001,Northwind,1200.00
+INV-1004,Initech,75.00
+INV-1002,Acme,450.50

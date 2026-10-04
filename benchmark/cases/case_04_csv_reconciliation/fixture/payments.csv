@@ -1,0 +1,9 @@
+payment_id,invoice_id,amount,status
+P-001,INV-1001,700.00,settled
+P-002,INV-1001,500.00,settled
+P-003,INV-1002,200.00,settled
+P-004,INV-1002,99.50,settled
+P-005,INV-1003,999.00,void
+P-006,INV-1003,100.00,settled
+P-007,INV-9999,500.00,settled
+P-008,INV-1002,20.00,pending

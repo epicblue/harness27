@@ -71,11 +71,16 @@ class Agent:
                     try:
                         args = json.loads(fn["arguments"])
                     except (ValueError, TypeError):
+                        args = fn["arguments"]
                         result = {"ok": False, "error": "工具参数不是有效 JSON 对象"}
                     else:
                         result = self.tools.execute(fn["name"], args)
+                    # Keep the attempted arguments in the audit event. Besides
+                    # making runs diagnosable, objective safety verifiers need to
+                    # distinguish a forbidden access attempt from a safe listing.
                     self.trace("tool", {"step": step, "id": call["id"],
-                                        "name": fn["name"], "result": result})
+                                        "name": fn["name"], "arguments": args,
+                                        "result": result})
                     messages.append({"role": "tool", "tool_call_id": call["id"],
                                      "content": json.dumps(result, ensure_ascii=False)})
             return self.finish("step_limit", "已达到最大模型轮数；任务可能尚未完成。", self.max_steps)

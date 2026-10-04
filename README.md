@@ -2,7 +2,9 @@
 
 基于 **Python 3.10+** 的离线 Agent 执行框架，通过本机 OpenAI 兼容的 `POST /v1/chat/completions` 接口调用已部署的 27B 模型。Python 运行时仅使用标准库，无云端 SDK、遥测或自动下载。
 
-> 这是 Agent harness，不是模型训练或基准评测程序。权重加载和 GPU 推理由 vLLM、Ollama、llama.cpp 等独立服务负责。模型规模不被客户端强制校验，实际使用的 27B 模型由服务端决定。
+> 这是 Agent harness，不负责训练、加载模型权重或 GPU 推理；仓库另含一套早期本地 benchmark runner（见下文），不是完整行业基准。权重加载和推理由 vLLM、Ollama、llama.cpp 等独立服务负责。模型规模不被客户端强制校验，实际使用的 27B 模型由服务端决定。
+
+完整文档： [使用说明](docs/USER_GUIDE.md) · [使用场景实例](docs/USE_CASES.md) · [能力评测手册](docs/BENCHMARK_GUIDE.md) · [系统设计](docs/DESIGN.md) · [文档索引](docs/README.md)
 
 ## 快速开始
 
@@ -89,7 +91,7 @@ python -m harness27 --model local-27b --workspace ./workspace \
 
 ## 轨迹与返回值
 
-每次运行写入当前目录的 `.harness27/runs/<时间>-<ID>.jsonl`，逐条 flush，包含任务、模型输出、工具结果、推理耗时和结束状态。文件以 `0600` 权限创建（POSIX）。可用于审计和定位失败，不支持自动恢复执行。
+每次运行写入当前目录的 `.harness27/runs/<时间>-<ID>.jsonl`，逐条 flush，包含任务、模型输出、工具调用参数与结果、推理耗时和结束状态。文件以 `0600` 权限创建（POSIX）。可用于审计和定位失败，不支持自动恢复执行。
 
 退出码：
 
@@ -106,8 +108,32 @@ python -m harness27 --model local-27b --workspace ./workspace \
 2. 这些限制只约束模型 HTTP 客户端。模型服务自身是否联网需单独配置；启用的 Shell 也可能联网。真正断网请使用主机/容器网络策略。
 3. 文件工具的路径校验不是 OS 级沙箱，不能抵御恶意并发修改目录/符号链接、预先放置的敏感硬链接或所有特殊文件系统场景。只使用专门的、可信的工作目录，不要挂载凭据或个人文件。
 4. Shell 使用当前用户权限，可访问工作目录外的文件、继承环境变量并启动进程。应在无凭据、无网络、限制 CPU/内存/磁盘的隔离容器中运行，并检查每次审批内容。命令输出先落临时文件，返回值虽然截断，临时磁盘占用仍需 OS 配额约束。POSIX 进程组清理不保证清除主动脱离进程组的进程。
-5. 轨迹含任务、文件内容及模型输出，可能包含敏感信息；请设置合适的存储权限并定期清理。`.gitignore` 默认排除轨迹、workspace 和 models。
+5. Agent 轨迹含任务、工具调用参数/结果、文件内容及模型输出，可能包含敏感信息；请设置合适的存储权限并定期清理。`.gitignore` 默认排除轨迹、workspace 和 models。
 6. 模型输入、工具输出和生成的代码均不可信；人工审批与提示词不能替代安全隔离。
+
+## 27B 能力摸底评测
+
+`benchmark/runner.py` 用于串行运行本地模型评测用例，服务地址仍限制为回环 IP。先查看用例，再单跑或重复一组任务：
+
+```bash
+python benchmark/runner.py --list-cases
+python benchmark/runner.py --case case_04_csv_reconciliation
+python benchmark/runner.py --repeat 3
+```
+
+若本地模型服务要求 API key，使用 `HARNESS27_API_KEY` 环境变量。每个用例有独立 fixture、任务、元数据（能力类别/难度/技能）和客观 verifier；当前覆盖配置抽取、否定约束、代码修复、CSV 多文件对账。报告记录 runner/Agent/客户端/工具的 SHA-256 指纹，以及每个用例输入（提示词、fixture、元数据、verifier）的 SHA-256 指纹，便于确认不同运行是否评测了同一版本。结果按用例、类别、难度和技能汇总，包括 verifier 成功率、Agent 完成率、轮数、工具错误、耗时和服务返回的 token 用量。Verifier pass/fail 才计入能力成功率；接口/协议/verifier 异常和跳过会单独统计、不计入该分母。技能标签可重叠，各技能成功率不可相加成总分。重复运行可观察该小型用例集上的稳定性，但服务端未必支持可复现采样。
+
+默认工作区使用唯一临时目录，评测后清理；`--keep-workspaces` 可保留以便复盘。JSON 报告默认写到 `.harness27/benchmark/results/`（权限受限，且已被 Git 忽略），保存逐用例指标、汇总和 verifier 输出；不保存完整对话、工具参数或推理轨迹。自定义路径：`--report ./my-run.json`。
+
+代码修复用例要求运行测试，标记为 `shell=required`，未明确授权时会跳过；需加 `--allow-shell` 才会运行：
+
+```bash
+python benchmark/runner.py --case case_03_pytest_repair --allow-shell
+```
+
+**高风险：** `--allow-shell` 会自动批准模型生成的任意 Shell 命令，Shell 使用当前用户权限且不是沙箱。只应在没有凭据、无网络并有 CPU/内存/磁盘限制的外部隔离容器中启用；不要把此选项当作安全隔离。Shell 只会出现在元数据允许的用例中，敏感文件约束用例始终禁用 Shell。
+
+这套四用例是早期 smoke suite，不是代表性行业基准；不同任务、模型模板、量化、采样和推理服务配置都会影响结果。服务端权重校验、量化、tokenizer/chat template/tool parser 版本目前不会由 API 自动探测；跨运行比较时需自行记录部署参数。报告只反映当前配置和这些具体用例，不能据此宣称 27B 模型普遍具备或不具备某种能力。当前仓库**尚未在实际 27B 模型上完成端到端评测**，尚无实测成功率。
 
 ## 测试
 
@@ -115,9 +141,7 @@ python -m harness27 --model local-27b --workspace ./workspace \
 python -m unittest discover -s tests -v
 ```
 
-测试不依赖模型权重，也不访问互联网；包含模拟多轮 Agent 和真实回环 HTTP 测试服务。覆盖文件审批、路径穿越/符号链接、硬链接覆写保护、无效工具参数、调用结构验证、预算、读文件截断、Shell 超时以及远程 URL/重定向拒绝。
-
-尚未在实际 27B 模型上完成端到端验证。接入实际服务后，建议先执行只读任务，再验证文件写入审批与工具结果回传。
+测试不依赖模型权重，也不访问互联网；包含模拟多轮 Agent、真实回环 HTTP 测试服务、benchmark runner 和各用例 verifier。覆盖文件审批、路径穿越/符号链接、硬链接覆写保护、无效工具参数、调用结构验证、预算、读文件截断、Shell 超时、远程 URL/重定向拒绝，以及敏感文件访问尝试、报告汇总和评测工作区保护。
 
 ## 代码结构
 
@@ -128,8 +152,13 @@ harness27/
   tools.py      工作目录文件工具、审批、可选 Shell
   cli.py        命令行、轨迹记录、退出状态
   __main__.py   python -m harness27 入口
+benchmark/
+  runner.py     串行评测、客观验证与 JSON 汇总
+  cases/        fixture、任务元数据和独立 verifier
 tests/
   test_harness.py
+  test_benchmark.py
+  test_benchmark_runner.py
 ```
 
 在 Python 中也可直接组合 `LocalClient`、`Tools` 和 `Agent`。`Tools` 默认拒绝任何写入和 Shell 操作；若自定义 `approve(name, args)` 回调，调用方负责实现真实的授权机制。`trace(event, data)` 回调可用于接入自定义审计存储。

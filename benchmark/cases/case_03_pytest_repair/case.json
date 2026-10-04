@@ -1,0 +1,7 @@
+{
+  "title": "修复 Python bug 并运行回归测试",
+  "category": "software_maintenance",
+  "difficulty": "easy",
+  "skills": ["code_debugging", "test_execution", "protected_file"],
+  "shell": "required"
+}
