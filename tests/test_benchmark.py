@@ -10,6 +10,7 @@ from benchmark.cases.case_03_pytest_repair.verify import verify as verify_case_0
 from benchmark.cases.case_04_csv_reconciliation.verify import verify as verify_case_04
 from benchmark.cases.case_05_warehouse_replenishment.verify import verify as verify_case_05
 from benchmark.cases.case_06_ordered_package_install_plan.verify import verify as verify_case_06
+from benchmark.cases.case_07_support_ticket_triage.verify import verify as verify_case_07
 
 
 CASES = Path(__file__).resolve().parents[1] / "benchmark" / "cases"
@@ -150,6 +151,35 @@ class BenchmarkVerificationTests(unittest.TestCase):
 
             target.write_text(json.dumps(plan))
             self.assertFalse(verify_case_06(ws, [("tool", {"name": "shell"})]))
+
+    def test_case_07_support_ticket_triage_verifier(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ws = Path(tmpdir)
+            self.assertFalse(verify_case_07(ws))
+            self.copy_fixture("case_07_support_ticket_triage", ws)
+            expected = [
+                {"ticket_id": "T-101", "queue": "identity_ops", "priority": "P1",
+                 "first_response_due_utc": "2026-10-04T09:00:00Z"},
+                {"ticket_id": "T-104", "queue": "finance_ops", "priority": "P1",
+                 "first_response_due_utc": "2026-10-04T12:00:00Z"},
+                {"ticket_id": "T-102", "queue": "finance_ops", "priority": "P2",
+                 "first_response_due_utc": "2026-10-04T16:15:00Z"},
+                {"ticket_id": "T-103", "queue": "data_platform", "priority": "P3",
+                 "first_response_due_utc": "2026-10-04T17:30:00Z"},
+                {"ticket_id": "T-105", "queue": "identity_ops", "priority": "P3",
+                 "first_response_due_utc": "2026-10-05T11:45:00Z"},
+            ]
+            target = ws / "triage_plan.json"
+            target.write_text(json.dumps(expected))
+            self.assertTrue(verify_case_07(ws, []))
+
+            invalid = [dict(row) for row in expected]
+            invalid[0]["first_response_due_utc"] = "2026-10-04T10:00:00Z"
+            target.write_text(json.dumps(invalid))
+            self.assertFalse(verify_case_07(ws, []))
+
+            target.write_text(json.dumps(expected))
+            self.assertFalse(verify_case_07(ws, [("tool", {"name": "shell"})]))
 
 
 if __name__ == "__main__":

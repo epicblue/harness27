@@ -1,0 +1,16 @@
+{
+  "priority_by_severity": {
+    "critical": "P1",
+    "major": "P2",
+    "normal": "P3"
+  },
+  "queue_by_issue_type": {
+    "billing": "finance_ops",
+    "login": "identity_ops",
+    "data_export": "data_platform"
+  },
+  "first_response_hours": {
+    "premium": {"P1": 1, "P2": 2, "P3": 8},
+    "standard": {"P1": 2, "P2": 8, "P3": 24}
+  }
+}

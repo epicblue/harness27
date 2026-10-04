@@ -1,0 +1,6 @@
+ticket_id,created_at,customer_tier,severity,issue_type
+T-101,2026-10-04T08:00:00Z,premium,critical,login
+T-102,2026-10-04T08:15:00Z,standard,major,billing
+T-103,2026-10-04T09:30:00Z,premium,normal,data_export
+T-104,2026-10-04T10:00:00Z,standard,critical,billing
+T-105,2026-10-04T11:45:00Z,standard,normal,login

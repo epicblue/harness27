@@ -240,6 +240,51 @@ python benchmark/runner.py \
 
 期望顺序为 `acme-common`、`acme-auth`、`acme-config`、`acme-http`、`acme-client`、`acme-metrics`、`acme-report`、`daily-close`。此例的成功只证明模型按该合成清单生成了计划，不代表真实安装已完成或可安全执行。真实安装应在单独、可销毁、低权限的隔离环境中由受控脚本执行；不应给模型任意 Shell 权限来代替安装编排或回滚机制。
 
+## 场景八：按 SLA 规则分派支持工单
+
+**完整用户故事：**
+
+> 作为服务台协调员，我想依据工单严重级别、客户等级和组织 SLA 政策，生成带队列、优先级和首次响应截止时间的分派清单，以便值班人员先处理最紧急的工单并遵守服务承诺。
+
+- **触发条件：** 值班人员开始处理一批新工单。
+- **前置条件：** 工作区包含 `tickets.csv` 和 `sla_policy.json`；severity、客户等级和 issue type 已由上游填写。本用例中的工单、队列与策略都是合成数据，不含客户个人信息。
+- **主要流程：** 按政策表把 severity 映射为 P1/P2/P3，把 issue type 映射到负责队列；根据客户等级和优先级取首次响应 SLA 小时数；从 UTC 创建时间计算截止时间；生成排序清单供人工分派。
+- **验收标准：**
+  - **AC-01：** 每张输入工单在 JSON 结果中恰好出现一次，字段仅为 `ticket_id`、`queue`、`priority`、`first_response_due_utc`。
+  - **AC-02：** 队列和优先级严格按 `sla_policy.json` 映射，不自行改变严重级别。
+  - **AC-03：** 截止时间等于 UTC `created_at` 加上对应客户等级与优先级的 SLA 小时数，输出为带 `Z` 的 UTC 时间。
+  - **AC-04：** 按 P1、P2、P3 排序；同优先级按截止时间、再按 ticket ID 升序。
+  - **AC-05：** 只新增 `triage_plan.json`；不调用 Shell、不联网、不联系客户、不修改输入。
+- **不在范围内：** 推断根因、重判 severity、撰写或发送客户回复，以及连接真实工单平台或通知服务。
+
+先运行离线单元测试验证 verifier 与 FakeClient Runner 路径（不调用模型）：
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+若已配置本机模型服务，可运行禁用 Shell 的实际模型 trial：
+
+```bash
+python benchmark/runner.py \
+  --model local-27b \
+  --case case_07_support_ticket_triage
+```
+
+期望的 `triage_plan.json`：
+
+```json
+[
+  {"ticket_id": "T-101", "queue": "identity_ops", "priority": "P1", "first_response_due_utc": "2026-10-04T09:00:00Z"},
+  {"ticket_id": "T-104", "queue": "finance_ops", "priority": "P1", "first_response_due_utc": "2026-10-04T12:00:00Z"},
+  {"ticket_id": "T-102", "queue": "finance_ops", "priority": "P2", "first_response_due_utc": "2026-10-04T16:15:00Z"},
+  {"ticket_id": "T-103", "queue": "data_platform", "priority": "P3", "first_response_due_utc": "2026-10-04T17:30:00Z"},
+  {"ticket_id": "T-105", "queue": "identity_ops", "priority": "P3", "first_response_due_utc": "2026-10-05T11:45:00Z"}
+]
+```
+
+该案例只生成供人工审核的分派建议，不是真实工单操作，也没有在本次改动中对 27B 模型进行实测。运营落地前还应确认组织时区、节假日 SLA、重复工单及逾期升级规则是否需要纳入政策。
+
 ## 把业务需求写成好任务
 
 无论是运营、数据还是代码任务，建议把 prompt 写成一个可执行验收清单：
@@ -264,4 +309,5 @@ python benchmark/runner.py \
 | 多文件 CSV 汇总 | `benchmark/runner.py --case case_04_csv_reconciliation` | 否 | 是 |
 | 库存与在途采购核算 | `benchmark/runner.py --case case_05_warehouse_replenishment` | 否 | 是 |
 | 多软件包依赖顺序计划（仅计划，不安装） | `benchmark/runner.py --case case_06_ordered_package_install_plan` | 否 | 是，检查依赖顺序和版本 |
+| 支持工单分派（合成数据，仅生成清单） | `benchmark/runner.py --case case_07_support_ticket_triage` | 否 | 是，检查政策映射与 SLA |
 | 编辑代码并调用测试命令 | 隔离环境中的 case 03 或 CLI | 是 | case 03 有固定 verifier |

@@ -1,0 +1,11 @@
+我是服务台协调员，需要把今天收到的工单按值班队列和首次响应时限整理成一份供人工分派的清单。请读取 tickets.csv 和 sla_policy.json，生成 triage_plan.json；只整理信息，不要联系客户或修改工单。
+
+业务规则：
+1. 根据 sla_policy.json 的 priority_by_severity 将 severity 映射为 priority；根据 queue_by_issue_type 将 issue_type 映射为 queue。
+2. 根据 customer_tier 和 priority 查 first_response_hours。first_response_due_utc = created_at 加对应小时数；created_at 是 UTC，输出格式为 YYYY-MM-DDTHH:MM:SSZ。
+3. 每个输入工单输出一行，JSON 数组每行必须且只能包含 ticket_id、queue、priority、first_response_due_utc 四个字符串字段。
+4. 排序规则：P1 在 P2 前，P2 在 P3 前；同一 priority 按 first_response_due_utc 升序，再按 ticket_id 升序。
+5. 只新增 triage_plan.json；保持输入不变，不创建其他文件。
+6. 不要调用 Shell、联网、安装软件、访问外部服务、推断根因或发送客户回复。
+
+完成前核对工单数、队列和优先级映射、客户等级对应的响应小时数、UTC 截止时间、排序、字段和 JSON 格式。

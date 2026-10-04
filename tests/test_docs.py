@@ -90,6 +90,22 @@ class DocumentationTests(unittest.TestCase):
                 self.assertIn(criterion["id"], use_cases)
                 self.assertTrue(criterion["requirement"])
 
+    def test_support_ticket_story_and_acceptance_criteria_are_documented(self):
+        case_dir = ROOT / "benchmark" / "cases" / "case_07_support_ticket_triage"
+        metadata = json.loads((case_dir / "case.json").read_text(encoding="utf-8"))
+        story = metadata["user_story"]
+        self.assertTrue(all(story.get(field) for field in ("as_a", "i_want", "so_that")))
+        self.assertEqual(metadata["shell"], "disabled")
+        prompt = (case_dir / "prompt.txt").read_text(encoding="utf-8")
+        self.assertIn("不要联系客户", prompt)
+        self.assertIn("first_response_hours", (case_dir / "fixture" / "sla_policy.json")
+                      .read_text(encoding="utf-8"))
+        use_cases = (ROOT / "docs" / "USE_CASES.md").read_text(encoding="utf-8")
+        for criterion in metadata["acceptance_criteria"]:
+            with self.subTest(criterion=criterion["id"]):
+                self.assertIn(criterion["id"], use_cases)
+                self.assertTrue(criterion["requirement"])
+
 
 if __name__ == "__main__":
     unittest.main()

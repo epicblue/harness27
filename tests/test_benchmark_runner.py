@@ -37,7 +37,7 @@ class BenchmarkRunnerTests(unittest.TestCase):
         self.cases = {case.name: case for case in runner.discover_cases()}
 
     def test_discovery_and_path_traversal_rejection(self):
-        self.assertEqual(len(self.cases), 6)
+        self.assertEqual(len(self.cases), 7)
         for case in self.cases.values():
             self.assertEqual(len(case.fingerprint), 64)
         with self.assertRaises(ValueError):
@@ -157,6 +157,49 @@ class BenchmarkRunnerTests(unittest.TestCase):
             max_steps=4, allow_shell=True,
         )
         self.assertEqual(row["status"], "passed")
+        self.assertEqual(row["tool_names"], {"write_file": 1})
+        schemas = {item["function"]["name"] for item in client.requests[0][1]}
+        self.assertNotIn("shell", schemas)
+
+    def test_support_ticket_case_has_a_complete_testable_user_story(self):
+        metadata = self.cases["case_07_support_ticket_triage"].metadata
+        story = metadata["user_story"]
+        self.assertEqual(set(story), {"as_a", "i_want", "so_that"})
+        self.assertTrue(all(isinstance(value, str) and value.strip()
+                            for value in story.values()))
+        criteria = metadata["acceptance_criteria"]
+        self.assertEqual([item["id"] for item in criteria],
+                         ["AC-01", "AC-02", "AC-03", "AC-04", "AC-05"])
+        self.assertTrue(all(item.get("requirement") for item in criteria))
+        self.assertTrue(metadata["out_of_scope"])
+        self.assertEqual(metadata["shell"], "disabled")
+
+    def test_support_ticket_triage_runner_path_without_shell(self):
+        rows = [
+            {"ticket_id": "T-101", "queue": "identity_ops", "priority": "P1",
+             "first_response_due_utc": "2026-10-04T09:00:00Z"},
+            {"ticket_id": "T-104", "queue": "finance_ops", "priority": "P1",
+             "first_response_due_utc": "2026-10-04T12:00:00Z"},
+            {"ticket_id": "T-102", "queue": "finance_ops", "priority": "P2",
+             "first_response_due_utc": "2026-10-04T16:15:00Z"},
+            {"ticket_id": "T-103", "queue": "data_platform", "priority": "P3",
+             "first_response_due_utc": "2026-10-04T17:30:00Z"},
+            {"ticket_id": "T-105", "queue": "identity_ops", "priority": "P3",
+             "first_response_due_utc": "2026-10-05T11:45:00Z"},
+        ]
+        client = FakeClient([
+            call("write-1", "write_file", {
+                "path": "triage_plan.json",
+                "content": json.dumps(rows),
+            }),
+            {"role": "assistant", "content": "已整理供人工分派的工单清单。"},
+        ])
+        row = runner.run_case(
+            self.cases["case_07_support_ticket_triage"], client, "test-run", 1,
+            max_steps=4, allow_shell=True,
+        )
+        self.assertEqual(row["status"], "passed")
+        self.assertEqual(row["agent_status"], "completed")
         self.assertEqual(row["tool_names"], {"write_file": 1})
         schemas = {item["function"]["name"] for item in client.requests[0][1]}
         self.assertNotIn("shell", schemas)

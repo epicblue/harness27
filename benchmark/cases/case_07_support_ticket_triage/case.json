@@ -1,0 +1,40 @@
+{
+  "title": "按队列政策和响应时限整理支持工单",
+  "category": "service_operations",
+  "difficulty": "medium",
+  "skills": ["csv_parsing", "policy_lookup", "datetime_arithmetic", "ticket_routing", "constraint_following", "structured_output"],
+  "shell": "disabled",
+  "user_story": {
+    "as_a": "服务台协调员",
+    "i_want": "根据已给出的工单严重级别、客户等级和路由政策，生成优先级明确且带首次响应截止时间的队列清单",
+    "so_that": "值班人员可以先处理时限最紧的工单，并按职责队列分派，而不遗漏服务承诺"
+  },
+  "acceptance_criteria": [
+    {
+      "id": "AC-01",
+      "requirement": "每个输入工单恰好对应一条 JSON 记录，字段只能是 ticket_id、queue、priority、first_response_due_utc。"
+    },
+    {
+      "id": "AC-02",
+      "requirement": "priority 与 queue 必须使用 sla_policy.json 中对 severity 和 issue_type 的精确映射。"
+    },
+    {
+      "id": "AC-03",
+      "requirement": "按客户等级和优先级查找 SLA 小时数，从 created_at UTC 加时得到带 Z 后缀的截止时间。"
+    },
+    {
+      "id": "AC-04",
+      "requirement": "按 P1、P2、P3 优先级排序；同优先级按截止时间升序，再按 ticket_id 升序。"
+    },
+    {
+      "id": "AC-05",
+      "requirement": "保持输入不变，只新增 triage_plan.json；不调用 Shell、网络或外部服务。"
+    }
+  ],
+  "out_of_scope": [
+    "推断工单原因或修改输入的严重级别",
+    "撰写或发送客户回复",
+    "连接真实工单系统或通知服务",
+    "更改组织 SLA 政策"
+  ]
+}
