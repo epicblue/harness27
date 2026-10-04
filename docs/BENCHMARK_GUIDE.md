@@ -4,7 +4,7 @@
 
 Benchmark 的目的，是在真实本机推理服务上回答具体、有限的问题：给定某个模型服务配置、任务、工具权限和执行预算，Agent 是否能产出通过客观 verifier 的结果？它同时记录完成状态、工具行为、耗时和 token usage，用于发现任务能力边界及重复运行时的波动。
 
-当前仓库有八个小型 smoke case，覆盖配置抽取、约束遵循、代码修复、CSV 对账、库存补货、软件包依赖顺序规划、支持工单分派和会议室分配。它们不构成代表性行业基准，样本数量不足以支撑“27B 模型普遍会/不会做某类任务”的结论。仓库本身没有 27B 权重或推理服务，也尚无实测成功率。测试里的 mock-client 成功不属于模型实测。终端逐步示例见[使用场景实例](USE_CASES.md)。
+当前仓库有十一个小型 smoke case，覆盖配置抽取、约束遵循、代码修复、CSV 对账、库存补货、软件包依赖顺序规划、支持工单分派、会议室分配，以及制造质检、工单物料齐套核对和批次追溯。它们不构成代表性行业基准，样本数量不足以支撑“27B 模型普遍会/不会做某类任务”的结论。仓库本身没有 27B 权重或推理服务，也尚无实测成功率。测试里的 mock-client 成功不属于模型实测。终端逐步示例见[使用场景实例](USE_CASES.md)。
 
 ## 2. 启动一次评测
 
@@ -96,8 +96,11 @@ Fixture 复制会拒绝符号链接，忽略 Python `__pycache__`/`.pyc`/`.pyo` 
 | `case_06_ordered_package_install_plan` | `software_environment` / medium | `dependency_analysis`、`topological_sort`、`version_pinning`、`constraint_following`、`structured_output` | 根据合成锁定清单生成有序安装计划；不运行 Shell、不联网、不安装包。Verifier 检查版本、依赖顺序和完整性。 | 禁用 |
 | `case_07_support_ticket_triage` | `service_operations` / medium | `csv_parsing`、`policy_lookup`、`datetime_arithmetic`、`ticket_routing`、`constraint_following`、`structured_output` | 根据合成工单与 SLA policy 输出队列、优先级和 UTC 首次响应截止时间。Verifier 检查策略映射、时限、排序与输入完整性。 | 禁用 |
 | `case_08_meeting_room_allocation` | `operations_planning` / medium | `csv_parsing`、`policy_lookup`、`interval_scheduling`、`constraint_satisfaction`、`deterministic_tiebreaking`、`structured_output` | 为合成会议选择容量和设备合适、且不与预订冲突的房间；没有可行房间时明确标记未分配。Verifier 检查边界时刻、排序、房间选择和输入完整性。 | 禁用 |
+| `case_09_quality_inspection_review` | `quality_operations` / medium | `csv_parsing`、`numeric_comparison`、`policy_lookup`、`data_grouping`、`constraint_following`、`structured_output` | 比较合成测量和规格限值，按抽样门槛生成待人工复核的批次摘要；不放行产品。Verifier 检查边界包含、超差项、状态和文件集合。 | 禁用 |
+| `case_10_production_material_readiness` | `production_planning` / medium | `csv_parsing`、`bill_of_materials_reasoning`、`integer_arithmetic`、`policy_lookup`、`shortage_analysis`、`structured_output` | 将工单连接到 BOM 和工单级分配快照，计算齐套状态及组件短缺。Verifier 检查乘法、缺失分配、排序和输入完整性。 | 禁用 |
+| `case_11_material_lot_traceability` | `manufacturing_traceability` / medium | `csv_parsing`、`multi_file_join`、`lot_traceability`、`deduplication`、`structured_output` | 从合成组件 lot 精确追溯关联成品批次、发运和未发运范围。Verifier 检查去重、关联、排序及输入完整性。 | 禁用 |
 
-`case_05_warehouse_replenishment`、`case_06_ordered_package_install_plan`、`case_07_support_ticket_triage` 和 `case_08_meeting_room_allocation` 都示范了完整用户故事：`case.json` 内含 `as_a` / `i_want` / `so_that`、AC-01 至 AC-05 和范围外事项；`prompt.txt` 给模型实际任务，独立 verifier 与单元测试落实验收标准。软件包用例只生成计划，不执行安装；工单用例只生成分派清单，不连接服务台或发送回复；会议室用例只生成审核计划，不写入日历。因为 `case.json` 和 prompt 都参与 case fingerprint，故事/需求变更会形成新的评测版本。故事的完整说明见[使用场景实例](USE_CASES.md)。
+`case_05_warehouse_replenishment` 至 `case_11_material_lot_traceability` 均示范了完整用户故事：`case.json` 内含 `as_a` / `i_want` / `so_that`、AC-01 至 AC-05 和范围外事项；`prompt.txt` 给模型实际任务，独立 verifier 与单元测试落实验收标准。各用例只处理合成数据并生成待人工审核的计划或报告，不执行安装、工单、日历、质量放行、库存分配、设备控制或召回操作；也不连接实际服务台、MES、ERP、WMS 或 QMS。因为 `case.json` 和 prompt 都参与 case fingerprint，故事/需求变更会形成新的评测版本。故事的完整说明见[使用场景实例](USE_CASES.md)。
 
 `difficulty` 是仓库内的粗分级，不是校准过的量表；`skills` 是标签，不保证彼此独立。标签的类别数和 case 数很小，不能将按技能的结果相加成统一“能力总分”。
 
@@ -148,7 +151,7 @@ Runner 完成所有 case 但有 task verifier 失败时，进程仍可以返回 
 新增目录建议使用稳定小写 ID：
 
 ```text
-benchmark/cases/case_09_<topic>/
+benchmark/cases/case_12_<topic>/
   case.json
   prompt.txt
   verify.py

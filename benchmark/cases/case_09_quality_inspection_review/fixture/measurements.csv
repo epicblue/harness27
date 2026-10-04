@@ -1,0 +1,8 @@
+measurement_id,lot_id,characteristic,value,unit
+Q-901-A,LOT-901,length_mm,100.0,mm
+Q-901-B,LOT-901,diameter_mm,10.1,mm
+Q-901-C,LOT-901,length_mm,99.5,mm
+Q-902-A,LOT-902,length_mm,100.5,mm
+Q-902-B,LOT-902,diameter_mm,10.21,mm
+Q-902-C,LOT-902,length_mm,99.9,mm
+Q-903-A,LOT-903,diameter_mm,10.0,mm

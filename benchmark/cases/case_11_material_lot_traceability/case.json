@@ -1,0 +1,40 @@
+{
+  "title": "追溯指定组件批次关联的成品与发运记录",
+  "category": "manufacturing_traceability",
+  "difficulty": "medium",
+  "skills": ["csv_parsing", "multi_file_join", "lot_traceability", "deduplication", "structured_output"],
+  "shell": "disabled",
+  "user_story": {
+    "as_a": "制造质量分析员",
+    "i_want": "从组件使用记录追溯指定组件批次关联的成品批次及其发运记录",
+    "so_that": "质量团队能够准确界定需要人工评估的影响范围，而不遗漏已发运批次或误纳入无关产品"
+  },
+  "acceptance_criteria": [
+    {
+      "id": "AC-01",
+      "requirement": "只纳入 component_usage.csv 中 component_lot 与 trace_request.json 目标值精确相等的记录；每个成品批次去重并汇总 units_used，component_sku 必须与目标组件批次对应。"
+    },
+    {
+      "id": "AC-02",
+      "requirement": "affected_finished_lots 只包含目标批次关联且存在于 finished_lots.csv 的批次，并带出 work_order_id、finished_sku 和 produced_at_utc。"
+    },
+    {
+      "id": "AC-03",
+      "requirement": "affected_shipments 只包含受影响成品批次对应的发运记录，每项含 shipment_id 和 finished_lot，并按 shipment_id 升序。"
+    },
+    {
+      "id": "AC-04",
+      "requirement": "unshipped_finished_lots 是受影响成品批次中没有任何发运记录的批次；成品批次按 finished_lot 升序且无重复。"
+    },
+    {
+      "id": "AC-05",
+      "requirement": "只新增 trace_report.json，字段严格符合 schema；不修改输入、不调用 Shell 或外部系统，不创建实际质量隔离、召回或发运冻结操作。"
+    }
+  ],
+  "out_of_scope": [
+    "判断产品是否存在安全或法规风险",
+    "隔离、召回、退货或冻结实体产品及发运",
+    "联系供应商、客户或承运方",
+    "写入真实 MES、ERP、QMS 或追溯平台"
+  ]
+}

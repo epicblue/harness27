@@ -1,0 +1,6 @@
+{
+  "characteristics": {
+    "length_mm": {"unit": "mm", "lower_limit": "99.5", "upper_limit": "100.5"},
+    "diameter_mm": {"unit": "mm", "lower_limit": "9.8", "upper_limit": "10.2"}
+  }
+}

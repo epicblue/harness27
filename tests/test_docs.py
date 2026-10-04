@@ -106,6 +106,31 @@ class DocumentationTests(unittest.TestCase):
                 self.assertIn(criterion["id"], use_cases)
                 self.assertTrue(criterion["requirement"])
 
+    def test_manufacturing_stories_and_acceptance_criteria_are_documented(self):
+        manufacturing_cases = {
+            "case_09_quality_inspection_review": ("不要调用 Shell", "lower_limit"),
+            "case_10_production_material_readiness": ("不调用 Shell", "priority_order"),
+            "case_11_material_lot_traceability": ("不要调用 Shell", "component_lot"),
+        }
+        use_cases = (ROOT / "docs" / "USE_CASES.md").read_text(encoding="utf-8")
+        for case_name, (prompt_marker, fixture_marker) in manufacturing_cases.items():
+            with self.subTest(case=case_name):
+                case_dir = ROOT / "benchmark" / "cases" / case_name
+                metadata = json.loads((case_dir / "case.json").read_text(encoding="utf-8"))
+                story = metadata["user_story"]
+                self.assertTrue(all(story.get(field) for field in ("as_a", "i_want", "so_that")))
+                self.assertEqual(metadata["shell"], "disabled")
+                prompt = (case_dir / "prompt.txt").read_text(encoding="utf-8")
+                self.assertIn(prompt_marker, prompt)
+                fixtures = "\n".join(path.read_text(encoding="utf-8")
+                                      for path in (case_dir / "fixture").iterdir())
+                self.assertIn(fixture_marker, fixtures)
+                self.assertIn(case_name, use_cases)
+                for criterion in metadata["acceptance_criteria"]:
+                    with self.subTest(criterion=criterion["id"]):
+                        self.assertIn(criterion["id"], use_cases)
+                        self.assertTrue(criterion["requirement"])
+
     def test_support_ticket_story_and_acceptance_criteria_are_documented(self):
         case_dir = ROOT / "benchmark" / "cases" / "case_07_support_ticket_triage"
         metadata = json.loads((case_dir / "case.json").read_text(encoding="utf-8"))

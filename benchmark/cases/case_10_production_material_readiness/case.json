@@ -1,0 +1,40 @@
+{
+  "title": "核对生产工单的物料齐套情况",
+  "category": "production_planning",
+  "difficulty": "medium",
+  "skills": ["csv_parsing", "bill_of_materials_reasoning", "integer_arithmetic", "policy_lookup", "shortage_analysis", "structured_output"],
+  "shell": "disabled",
+  "user_story": {
+    "as_a": "生产计划员",
+    "i_want": "按产品 BOM 和工单数量核对已分配物料，列出短缺组件和数量",
+    "so_that": "班组可以在排产前识别尚未齐套的工单，避免把缺料计划误报为可开工"
+  },
+  "acceptance_criteria": [
+    {
+      "id": "AC-01",
+      "requirement": "每个 work order 恰好输出一条记录，字段只能是 work_order_id、status、shortages。"
+    },
+    {
+      "id": "AC-02",
+      "requirement": "每种 BOM 组件的 required_units 等于 planned_units 乘以 units_per_unit；按该工单的 material_allocations 核对，未列出的分配量视为 0。"
+    },
+    {
+      "id": "AC-03",
+      "requirement": "shortage_units 等于 max(required_units - allocated_units, 0)；仅正短缺进入 shortages，全部满足时 status 为 ready，否则为 blocked。"
+    },
+    {
+      "id": "AC-04",
+      "requirement": "按 priority_order、due_date_utc、work_order_id 排序；短缺项按 component_sku 升序。"
+    },
+    {
+      "id": "AC-05",
+      "requirement": "只新增 readiness_plan.json；不在工单之间重新分配物料、不修改输入、不调用 Shell 或外部生产系统。"
+    }
+  ],
+  "out_of_scope": [
+    "实际分配、转移或预留库存",
+    "释放、暂停或改写生产工单",
+    "自动变更排产、采购单或 BOM",
+    "连接 MES、ERP、WMS 或设备控制系统"
+  ]
+}

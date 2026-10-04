@@ -1,0 +1,11 @@
+我是制造质量分析员，需要查询一个合成组件批次关联的成品范围，供质量团队人工评估。请读取 trace_request.json、component_usage.csv、finished_lots.csv 和 shipments.csv，只新增 trace_report.json；不要更改输入或执行遏制措施。
+
+追溯规则：
+1. 从 trace_request.json 读取 component_lot；在 component_usage.csv 中按 component_lot 精确匹配，收集组件 SKU、finished_lot 和 units_used。同一组件批次必须对应同一 component_sku；按 finished_lot 汇总 units_used，重复使用行不重复生成成品批次。
+2. 在 finished_lots.csv 中连接受影响的 finished_lot；只输出存在的生产批次，并带出 work_order_id、finished_sku、produced_at_utc。按 finished_lot 升序排列。
+3. 在 shipments.csv 中查找 finished_lot 属于受影响集合的发运行；affected_shipments 每项只含 shipment_id 和 finished_lot，按 shipment_id 升序。
+4. unshipped_finished_lots 是受影响集合中没有任何匹配发运记录的 finished_lot，按升序排列。
+5. 输出 JSON 对象且只能含 component_lot、component_sku、affected_finished_lots、affected_shipments、unshipped_finished_lots 五个字段。affected_finished_lots 每项字段为 finished_lot、work_order_id、finished_sku、produced_at_utc、component_units。
+6. 只写 trace_report.json；不要调用 Shell、联网、联系供应商/客户、冻结或变更产品/发运、访问外部系统或创建其他文件。
+
+完成前核对目标批次精确匹配、重复组件使用去重、成品与发运关联、未发运批次及排序。所有记录为合成数据；结果是追溯范围草案，不是风险判定或召回/冻结指令。

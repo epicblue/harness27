@@ -1,0 +1,5 @@
+work_order_id,product_code,planned_units,priority,due_date_utc
+WO-311,PROD-B,5,P1,2026-10-14T14:00:00Z
+WO-310,PROD-A,10,P1,2026-10-15T14:00:00Z
+WO-312,PROD-B,8,P2,2026-10-14T10:00:00Z
+WO-314,PROD-A,3,P2,2026-10-16T10:00:00Z

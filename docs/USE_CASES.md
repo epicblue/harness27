@@ -333,6 +333,110 @@ python benchmark/runner.py \
 
 该用例只生成供人工审核的静态建议，不创建或更新真实日历事件；fixture 是合成数据，本次改动也没有进行 27B 模型实测。
 
+## 场景十：复核生产批次的抽样测量结果
+
+**完整用户故事：**
+
+> 作为质量检验员，我想按产品规格和抽样要求汇总合成测量数据，标出超差项目及需要质量复核的批次，以便质量团队优先审查异常或抽样不足的批次，而不把自动检查误当作产品放行。
+
+- **触发条件：** 检验员收到一批待复核的抽样测量结果。
+- **前置条件：** 工作区包含 `measurements.csv`、`product_specs.json` 和 `inspection_policy.json`。测量、规格和批次均为合成数据。
+- **主要流程：** 按批次聚合测量，根据 characteristic 和 unit 查找上下限（含边界），识别超差 measurement ID，再按抽样数量和超差情况标注人工复核状态。
+- **验收标准：**
+  - **AC-01：** 每批恰有一条记录，字段仅为 `lot_id`、`status`、`checked_count`、`out_of_spec_measurement_ids`。
+  - **AC-02：** 使用规格文件对应的单位和上下限；等于上下限视为规格内。
+  - **AC-03：** 抽样数不足标为 `insufficient_sample`；否则有超差项标为 `hold_for_quality_review`；否则标为 `pass_pending_human_approval`。抽样不足时仍需列出已发现的超差 ID。
+  - **AC-04：** 按 `lot_id` 升序输出，超差 ID 升序，`checked_count` 等于输入测量行数。
+  - **AC-05：** 只新增 `quality_review.json`；不修改输入、不调用 Shell 或网络、不控制设备或放行产品。
+- **不在范围内：** 自动放行、报废或隔离实体产品；修改规格、测量值或生产参数；向真实 MES/QMS 写入记录。
+
+离线测试（不调用模型）：
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+期望的 `quality_review.json`：
+
+```json
+[
+  {"lot_id": "LOT-901", "status": "pass_pending_human_approval", "checked_count": 3, "out_of_spec_measurement_ids": []},
+  {"lot_id": "LOT-902", "status": "hold_for_quality_review", "checked_count": 3, "out_of_spec_measurement_ids": ["Q-902-B"]},
+  {"lot_id": "LOT-903", "status": "insufficient_sample", "checked_count": 1, "out_of_spec_measurement_ids": []}
+]
+```
+
+此结果是合成数据上的人工复核辅助，不是质量放行决定；本次改动没有进行 27B 模型实测。
+
+## 场景十一：检查生产工单的物料齐套情况
+
+**完整用户故事：**
+
+> 作为生产计划员，我想按产品 BOM 和工单数量核对已分配物料，列出短缺组件和数量，以便班组在排产前识别尚未齐套的工单，避免把缺料计划误报为可开工。
+
+- **触发条件：** 排产前对一批待处理工单进行齐套复核。
+- **前置条件：** 工作区提供 `work_orders.csv`、`bill_of_materials.csv`、`material_allocations.csv` 和 `production_policy.json`；数据均为合成快照。
+- **主要流程：** 将工单连接到产品 BOM，计算每个组件的需求量，和已分配到该工单的数量比较；缺少分配行按 0 计算；不在不同工单之间重新分配物料。
+- **验收标准：**
+  - **AC-01：** 每张工单恰好输出一条记录，字段仅为 `work_order_id`、`status`、`shortages`。
+  - **AC-02：** 组件需求为 `planned_units × units_per_unit`；按该工单自己的 allocation 快照核对。
+  - **AC-03：** 短缺量为 `max(required_units - allocated_units, 0)`；只列正短缺。无短缺为 `ready`，否则为 `blocked`。
+  - **AC-04：** 按政策优先级、到期时间、工单 ID 排序；短缺组件按 SKU 升序。
+  - **AC-05：** 只新增 `readiness_plan.json`；不重分配库存、不修改工单、不调用 Shell 或外部生产系统。
+- **不在范围内：** 实际库存预留或转移、释放或暂停工单、变更 BOM/采购单/排产，以及连接 MES、ERP、WMS。
+
+期望的 `readiness_plan.json`：
+
+```json
+[
+  {"work_order_id": "WO-311", "status": "ready", "shortages": []},
+  {"work_order_id": "WO-310", "status": "ready", "shortages": []},
+  {"work_order_id": "WO-312", "status": "blocked", "shortages": [{"component_sku": "MAT-03", "required_units": 24, "allocated_units": 20, "shortage_units": 4}]},
+  {"work_order_id": "WO-314", "status": "blocked", "shortages": [{"component_sku": "MAT-01", "required_units": 6, "allocated_units": 5, "shortage_units": 1}, {"component_sku": "MAT-02", "required_units": 3, "allocated_units": 0, "shortage_units": 3}]}
+]
+```
+
+该计划只核对合成工单的 allocation 快照，不表示真实库存已经核实或工单可以自动开工；本次改动没有进行 27B 模型实测。
+
+## 场景十二：追溯组件批次关联的成品与发运记录
+
+**完整用户故事：**
+
+> 作为制造质量分析员，我想从组件使用记录追溯指定组件批次关联的成品批次及其发运记录，以便质量团队准确界定需要人工评估的影响范围，而不遗漏已发运批次或误纳入无关产品。
+
+- **触发条件：** 质量团队收到一个需要核查的合成组件批次编号。
+- **前置条件：** 工作区包含 `trace_request.json`、`component_usage.csv`、`finished_lots.csv` 和 `shipments.csv`。批次、工单和发运 ID 均为合成标识。
+- **主要流程：** 精确匹配目标 component lot，汇总关联的成品批次并去重；再连接发运记录，区分已发运与尚无发运记录的受影响成品批次。
+- **验收标准：**
+  - **AC-01：** 只纳入目标 component lot 的精确匹配记录；按成品批次汇总使用量并去重，目标组件 SKU 应保持一致。
+  - **AC-02：** 受影响成品批次必须存在于 `finished_lots.csv`，并带出工单、成品 SKU 和生产时间。
+  - **AC-03：** `affected_shipments` 只含受影响成品批次对应的发运记录，每项仅为 `shipment_id` 和 `finished_lot`。
+  - **AC-04：** 未发运集合恰为没有任何匹配发运记录的受影响批次；成品按 ID 升序、发运按 shipment ID 升序。
+  - **AC-05：** 只新增 `trace_report.json`，字段符合 schema；不调用 Shell 或外部系统，不冻结发运、隔离产品或联系供应商/客户。
+- **不在范围内：** 判断产品风险、作出召回/退货决定、发起质量隔离或冻结，以及写入真实追溯平台。
+
+期望的 `trace_report.json`：
+
+```json
+{
+  "component_lot": "CL-771",
+  "component_sku": "MOTOR-8",
+  "affected_finished_lots": [
+    {"finished_lot": "FG-501", "work_order_id": "WO-501", "finished_sku": "ASSY-100", "produced_at_utc": "2026-10-10T08:30:00Z", "component_units": 2},
+    {"finished_lot": "FG-502", "work_order_id": "WO-502", "finished_sku": "ASSY-100", "produced_at_utc": "2026-10-10T12:00:00Z", "component_units": 1},
+    {"finished_lot": "FG-504", "work_order_id": "WO-504", "finished_sku": "ASSY-200", "produced_at_utc": "2026-10-11T10:45:00Z", "component_units": 2}
+  ],
+  "affected_shipments": [
+    {"shipment_id": "SH-701", "finished_lot": "FG-501"},
+    {"shipment_id": "SH-702", "finished_lot": "FG-501"},
+    {"shipment_id": "SH-704", "finished_lot": "FG-504"}
+  ],
+  "unshipped_finished_lots": ["FG-502"]
+}
+```
+
+报告仅是合成数据上的追溯范围草案，不是风险判定、召回或冻结指令；本次改动没有进行 27B 模型实测。
+
 ## 把业务需求写成好任务
 
 无论是运营、数据还是代码任务，建议把 prompt 写成一个可执行验收清单：
@@ -359,4 +463,7 @@ python benchmark/runner.py \
 | 多软件包依赖顺序计划（仅计划，不安装） | `benchmark/runner.py --case case_06_ordered_package_install_plan` | 否 | 是，检查依赖顺序和版本 |
 | 支持工单分派（合成数据，仅生成清单） | `benchmark/runner.py --case case_07_support_ticket_triage` | 否 | 是，检查政策映射与 SLA |
 | 会议室分配（合成数据，仅生成计划） | `benchmark/runner.py --case case_08_meeting_room_allocation` | 否 | 是，检查容量、设备与预订冲突 |
+| 制造批次质量复核（合成测量数据） | `benchmark/runner.py --case case_09_quality_inspection_review` | 否 | 是，检查规格边界与抽样状态 |
+| 生产工单物料齐套核对（合成 allocation 快照） | `benchmark/runner.py --case case_10_production_material_readiness` | 否 | 是，检查 BOM 需求与短缺 |
+| 组件批次追溯（合成数据，仅生成范围报告） | `benchmark/runner.py --case case_11_material_lot_traceability` | 否 | 是，检查批次去重与发运关联 |
 | 编辑代码并调用测试命令 | 隔离环境中的 case 03 或 CLI | 是 | case 03 有固定 verifier |

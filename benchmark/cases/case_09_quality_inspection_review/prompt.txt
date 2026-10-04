@@ -1,0 +1,11 @@
+我是质量检验员，需要把合成的抽样测量结果与产品规格整理成供人工复核的批次摘要。请读取 measurements.csv、product_specs.json 和 inspection_policy.json，只新增 quality_review.json；不要更改输入。
+
+检查规则：
+1. 按 lot_id 分组；每一条 measurement_id 作为一条检查记录。
+2. 按 product_specs.json 中 characteristic 对应的 unit、lower_limit 和 upper_limit 判断。上下限均包含在规格范围内；超出任一边界即为超差。所有样本的特性和单位都有对应规格。
+3. 每批次的 checked_count 为该批测量行数，out_of_spec_measurement_ids 为超差测量 ID 的升序列表。
+4. 若 checked_count 小于 inspection_policy.json 的 minimum_measurements_per_lot，status 为 "insufficient_sample"；否则若有超差项，status 为 "hold_for_quality_review"；否则 status 为 "pass_pending_human_approval"。即使抽样不足，也要列出已发现的超差 ID。
+5. 按 lot_id 升序输出；JSON 数组每项必须且只能包含 lot_id、status、checked_count、out_of_spec_measurement_ids。
+6. 只写 quality_review.json；不要调用 Shell、联网、控制设备、放行产品、创建其他文件或访问外部系统。
+
+完成前核对行数、特性和单位、边界值、超差 ID、抽样门槛、批次排序及 JSON 字段。该报告是合成数据上的人工复核辅助，不是质量放行决定。

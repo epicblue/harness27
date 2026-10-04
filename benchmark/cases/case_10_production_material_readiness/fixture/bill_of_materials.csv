@@ -1,0 +1,5 @@
+product_code,component_sku,units_per_unit
+PROD-A,MAT-02,1
+PROD-A,MAT-01,2
+PROD-B,MAT-03,3
+PROD-B,MAT-01,1

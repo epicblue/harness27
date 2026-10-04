@@ -1,0 +1,11 @@
+我是生产计划员，需要按 BOM 核对几张合成生产工单的已分配物料，生成供排产人员审核的齐套检查表。请读取 work_orders.csv、bill_of_materials.csv、material_allocations.csv 和 production_policy.json，只新增 readiness_plan.json；不要修改输入或重新分配物料。
+
+计算规则：
+1. 每个 work order 对应 product_code 的每个 BOM 组件，required_units = planned_units × units_per_unit。
+2. 只比较 material_allocations.csv 中已分配给该 work_order_id 的组件数量；缺少分配记录时 allocated_units 按 0 计算。各工单的 allocation 是独立快照，本任务不在工单之间重新分配或扣减。
+3. shortage_units = max(required_units - allocated_units, 0)。只把 shortage_units 大于 0 的组件放入 shortages，记录 component_sku、required_units、allocated_units、shortage_units；无短缺时 shortages 为空数组。无短缺工单 status 为 "ready"，否则为 "blocked"。
+4. 按 production_policy.json 的 priority_order，再按 due_date_utc、work_order_id 升序排列工单；shortages 按 component_sku 升序。
+5. JSON 数组每项必须且只能包含 work_order_id、status、shortages 三个字段。
+6. 只写 readiness_plan.json；不调用 Shell、联网、访问外部系统、改变 BOM、分配库存或修改生产工单。
+
+完成前核对 BOM 连接、整数乘法、缺失分配的零值、每项短缺数量、排序及输出字段。计划只用于人工审阅，不代表真实物料已经齐套或工单可以自动开工。

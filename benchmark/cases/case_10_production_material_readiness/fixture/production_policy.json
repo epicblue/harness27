@@ -1,0 +1,6 @@
+{
+  "priority_order": ["P1", "P2", "P3"],
+  "work_order_tiebreak": ["due_date_utc_ascending", "work_order_id_ascending"],
+  "missing_allocation_units": 0,
+  "allocation_scope": "per_work_order_snapshot"
+}

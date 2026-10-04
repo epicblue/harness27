@@ -12,6 +12,9 @@ from benchmark.cases.case_05_warehouse_replenishment.verify import verify as ver
 from benchmark.cases.case_06_ordered_package_install_plan.verify import verify as verify_case_06
 from benchmark.cases.case_07_support_ticket_triage.verify import verify as verify_case_07
 from benchmark.cases.case_08_meeting_room_allocation.verify import verify as verify_case_08
+from benchmark.cases.case_09_quality_inspection_review.verify import verify as verify_case_09
+from benchmark.cases.case_10_production_material_readiness.verify import verify as verify_case_10
+from benchmark.cases.case_11_material_lot_traceability.verify import verify as verify_case_11
 
 
 CASES = Path(__file__).resolve().parents[1] / "benchmark" / "cases"
@@ -209,6 +212,100 @@ class BenchmarkVerificationTests(unittest.TestCase):
 
             target.write_text(json.dumps(expected))
             self.assertFalse(verify_case_08(ws, [("tool", {"name": "shell"})]))
+
+    def test_case_09_quality_inspection_verifier(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ws = Path(tmpdir)
+            self.assertFalse(verify_case_09(ws))
+            self.copy_fixture("case_09_quality_inspection_review", ws)
+            expected = [
+                {"lot_id": "LOT-901", "status": "pass_pending_human_approval",
+                 "checked_count": 3, "out_of_spec_measurement_ids": []},
+                {"lot_id": "LOT-902", "status": "hold_for_quality_review",
+                 "checked_count": 3, "out_of_spec_measurement_ids": ["Q-902-B"]},
+                {"lot_id": "LOT-903", "status": "insufficient_sample",
+                 "checked_count": 1, "out_of_spec_measurement_ids": []},
+            ]
+            target = ws / "quality_review.json"
+            target.write_text(json.dumps(expected))
+            self.assertTrue(verify_case_09(ws, []))
+
+            invalid = [dict(row) for row in expected]
+            invalid[0]["checked_count"] = True
+            target.write_text(json.dumps(invalid))
+            self.assertFalse(verify_case_09(ws, []))
+
+            target.write_text(json.dumps(expected))
+            self.assertFalse(verify_case_09(ws, [("tool", {"name": "shell"})]))
+
+    def test_case_10_production_material_readiness_verifier(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ws = Path(tmpdir)
+            self.assertFalse(verify_case_10(ws))
+            self.copy_fixture("case_10_production_material_readiness", ws)
+            expected = [
+                {"work_order_id": "WO-311", "status": "ready", "shortages": []},
+                {"work_order_id": "WO-310", "status": "ready", "shortages": []},
+                {"work_order_id": "WO-312", "status": "blocked", "shortages": [
+                    {"component_sku": "MAT-03", "required_units": 24,
+                     "allocated_units": 20, "shortage_units": 4},
+                ]},
+                {"work_order_id": "WO-314", "status": "blocked", "shortages": [
+                    {"component_sku": "MAT-01", "required_units": 6,
+                     "allocated_units": 5, "shortage_units": 1},
+                    {"component_sku": "MAT-02", "required_units": 3,
+                     "allocated_units": 0, "shortage_units": 3},
+                ]},
+            ]
+            target = ws / "readiness_plan.json"
+            target.write_text(json.dumps(expected))
+            self.assertTrue(verify_case_10(ws, []))
+
+            invalid = json.loads(json.dumps(expected))
+            invalid[2]["shortages"][0]["shortage_units"] = 5
+            target.write_text(json.dumps(invalid))
+            self.assertFalse(verify_case_10(ws, []))
+
+            target.write_text(json.dumps(expected))
+            self.assertFalse(verify_case_10(ws, [("tool", {"name": "shell"})]))
+
+    def test_case_11_material_lot_traceability_verifier(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ws = Path(tmpdir)
+            self.assertFalse(verify_case_11(ws))
+            self.copy_fixture("case_11_material_lot_traceability", ws)
+            expected = {
+                "component_lot": "CL-771",
+                "component_sku": "MOTOR-8",
+                "affected_finished_lots": [
+                    {"finished_lot": "FG-501", "work_order_id": "WO-501",
+                     "finished_sku": "ASSY-100", "produced_at_utc": "2026-10-10T08:30:00Z",
+                     "component_units": 2},
+                    {"finished_lot": "FG-502", "work_order_id": "WO-502",
+                     "finished_sku": "ASSY-100", "produced_at_utc": "2026-10-10T12:00:00Z",
+                     "component_units": 1},
+                    {"finished_lot": "FG-504", "work_order_id": "WO-504",
+                     "finished_sku": "ASSY-200", "produced_at_utc": "2026-10-11T10:45:00Z",
+                     "component_units": 2},
+                ],
+                "affected_shipments": [
+                    {"shipment_id": "SH-701", "finished_lot": "FG-501"},
+                    {"shipment_id": "SH-702", "finished_lot": "FG-501"},
+                    {"shipment_id": "SH-704", "finished_lot": "FG-504"},
+                ],
+                "unshipped_finished_lots": ["FG-502"],
+            }
+            target = ws / "trace_report.json"
+            target.write_text(json.dumps(expected))
+            self.assertTrue(verify_case_11(ws, []))
+
+            invalid = json.loads(json.dumps(expected))
+            invalid["affected_finished_lots"].append("FG-503")
+            target.write_text(json.dumps(invalid))
+            self.assertFalse(verify_case_11(ws, []))
+
+            target.write_text(json.dumps(expected))
+            self.assertFalse(verify_case_11(ws, [("tool", {"name": "shell"})]))
 
 
 if __name__ == "__main__":

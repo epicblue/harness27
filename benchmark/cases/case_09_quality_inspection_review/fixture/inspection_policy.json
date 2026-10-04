@@ -1,0 +1,6 @@
+{
+  "minimum_measurements_per_lot": 3,
+  "limit_comparison": "inclusive",
+  "lot_order": "lot_id_ascending",
+  "out_of_spec_id_order": "measurement_id_ascending"
+}

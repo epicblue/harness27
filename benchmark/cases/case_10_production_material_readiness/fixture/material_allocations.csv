@@ -1,0 +1,8 @@
+work_order_id,component_sku,allocated_units
+WO-310,MAT-01,20
+WO-310,MAT-02,10
+WO-311,MAT-03,15
+WO-311,MAT-01,5
+WO-312,MAT-01,8
+WO-312,MAT-03,20
+WO-314,MAT-01,5

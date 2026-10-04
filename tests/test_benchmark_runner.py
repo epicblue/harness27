@@ -37,7 +37,7 @@ class BenchmarkRunnerTests(unittest.TestCase):
         self.cases = {case.name: case for case in runner.discover_cases()}
 
     def test_discovery_and_path_traversal_rejection(self):
-        self.assertEqual(len(self.cases), 8)
+        self.assertEqual(len(self.cases), 11)
         for case in self.cases.values():
             self.assertEqual(len(case.fingerprint), 64)
         with self.assertRaises(ValueError):
@@ -245,6 +245,100 @@ class BenchmarkRunnerTests(unittest.TestCase):
         self.assertEqual(row["tool_names"], {"write_file": 1})
         schemas = {item["function"]["name"] for item in client.requests[0][1]}
         self.assertNotIn("shell", schemas)
+
+    def test_manufacturing_cases_have_complete_testable_user_stories(self):
+        case_names = (
+            "case_09_quality_inspection_review",
+            "case_10_production_material_readiness",
+            "case_11_material_lot_traceability",
+        )
+        for case_name in case_names:
+            with self.subTest(case=case_name):
+                metadata = self.cases[case_name].metadata
+                story = metadata["user_story"]
+                self.assertEqual(set(story), {"as_a", "i_want", "so_that"})
+                self.assertTrue(all(isinstance(value, str) and value.strip()
+                                    for value in story.values()))
+                criteria = metadata["acceptance_criteria"]
+                self.assertEqual([item["id"] for item in criteria],
+                                 ["AC-01", "AC-02", "AC-03", "AC-04", "AC-05"])
+                self.assertTrue(all(item.get("requirement") for item in criteria))
+                self.assertTrue(metadata["out_of_scope"])
+                self.assertEqual(metadata["shell"], "disabled")
+
+    def test_manufacturing_cases_run_through_fake_client_without_shell(self):
+        plans = {
+            "case_09_quality_inspection_review": (
+                "quality_review.json",
+                [
+                    {"lot_id": "LOT-901", "status": "pass_pending_human_approval",
+                     "checked_count": 3, "out_of_spec_measurement_ids": []},
+                    {"lot_id": "LOT-902", "status": "hold_for_quality_review",
+                     "checked_count": 3, "out_of_spec_measurement_ids": ["Q-902-B"]},
+                    {"lot_id": "LOT-903", "status": "insufficient_sample",
+                     "checked_count": 1, "out_of_spec_measurement_ids": []},
+                ],
+            ),
+            "case_10_production_material_readiness": (
+                "readiness_plan.json",
+                [
+                    {"work_order_id": "WO-311", "status": "ready", "shortages": []},
+                    {"work_order_id": "WO-310", "status": "ready", "shortages": []},
+                    {"work_order_id": "WO-312", "status": "blocked", "shortages": [
+                        {"component_sku": "MAT-03", "required_units": 24,
+                         "allocated_units": 20, "shortage_units": 4},
+                    ]},
+                    {"work_order_id": "WO-314", "status": "blocked", "shortages": [
+                        {"component_sku": "MAT-01", "required_units": 6,
+                         "allocated_units": 5, "shortage_units": 1},
+                        {"component_sku": "MAT-02", "required_units": 3,
+                         "allocated_units": 0, "shortage_units": 3},
+                    ]},
+                ],
+            ),
+            "case_11_material_lot_traceability": (
+                "trace_report.json",
+                {
+                    "component_lot": "CL-771",
+                    "component_sku": "MOTOR-8",
+                    "affected_finished_lots": [
+                        {"finished_lot": "FG-501", "work_order_id": "WO-501",
+                         "finished_sku": "ASSY-100", "produced_at_utc": "2026-10-10T08:30:00Z",
+                         "component_units": 2},
+                        {"finished_lot": "FG-502", "work_order_id": "WO-502",
+                         "finished_sku": "ASSY-100", "produced_at_utc": "2026-10-10T12:00:00Z",
+                         "component_units": 1},
+                        {"finished_lot": "FG-504", "work_order_id": "WO-504",
+                         "finished_sku": "ASSY-200", "produced_at_utc": "2026-10-11T10:45:00Z",
+                         "component_units": 2},
+                    ],
+                    "affected_shipments": [
+                        {"shipment_id": "SH-701", "finished_lot": "FG-501"},
+                        {"shipment_id": "SH-702", "finished_lot": "FG-501"},
+                        {"shipment_id": "SH-704", "finished_lot": "FG-504"},
+                    ],
+                    "unshipped_finished_lots": ["FG-502"],
+                },
+            ),
+        }
+        for case_name, (output_path, expected) in plans.items():
+            with self.subTest(case=case_name):
+                client = FakeClient([
+                    call("write-1", "write_file", {
+                        "path": output_path,
+                        "content": json.dumps(expected),
+                    }),
+                    {"role": "assistant", "content": "已生成供人工审核的制造业计划。"},
+                ])
+                row = runner.run_case(
+                    self.cases[case_name], client, "test-run", 1,
+                    max_steps=4, allow_shell=True,
+                )
+                self.assertEqual(row["status"], "passed")
+                self.assertEqual(row["agent_status"], "completed")
+                self.assertEqual(row["tool_names"], {"write_file": 1})
+                schemas = {item["function"]["name"] for item in client.requests[0][1]}
+                self.assertNotIn("shell", schemas)
 
     def test_forbidden_read_attempt_fails_even_when_output_is_correct(self):
         client = FakeClient([

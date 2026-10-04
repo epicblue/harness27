@@ -1,0 +1,40 @@
+{
+  "title": "按检验规格生成批次质量复核摘要",
+  "category": "quality_operations",
+  "difficulty": "medium",
+  "skills": ["csv_parsing", "numeric_comparison", "policy_lookup", "data_grouping", "constraint_following", "structured_output"],
+  "shell": "disabled",
+  "user_story": {
+    "as_a": "质量检验员",
+    "i_want": "按产品规格和抽样要求汇总合成测量数据，标出超差项目及需要质量复核的批次",
+    "so_that": "质量团队可以优先审查异常或抽样不足的批次，而不把自动检查误当作产品放行"
+  },
+  "acceptance_criteria": [
+    {
+      "id": "AC-01",
+      "requirement": "每个测量批次恰好输出一条记录，字段只能是 lot_id、status、checked_count、out_of_spec_measurement_ids。"
+    },
+    {
+      "id": "AC-02",
+      "requirement": "按 product_specs.json 的特性、单位和上下限核对测量值；等于上下限视为规格内。"
+    },
+    {
+      "id": "AC-03",
+      "requirement": "少于 minimum_measurements_per_lot 时标为 insufficient_sample；否则有超差值时标为 hold_for_quality_review；其余标为 pass_pending_human_approval。"
+    },
+    {
+      "id": "AC-04",
+      "requirement": "批次按 lot_id 升序，超差测量 ID 升序；checked_count 必须是测量行数。"
+    },
+    {
+      "id": "AC-05",
+      "requirement": "只新增 quality_review.json，不修改输入、不调用 Shell 或网络、不控制设备或放行产品。"
+    }
+  ],
+  "out_of_scope": [
+    "自动放行、报废或隔离实体产品",
+    "更改检验规格、测量值或生产参数",
+    "控制生产或检测设备",
+    "向 MES、QMS 或其他真实系统写入记录"
+  ]
+}
