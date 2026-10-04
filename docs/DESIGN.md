@@ -683,7 +683,7 @@ Runner 自动创建唯一 run id 和 workspace，不覆写已存在的固定 ben
 
 1. Harness 单元测试：FakeClient 多轮协议、预算、工具参数、路径逃逸、文件覆盖保护和 Shell 超时。
 2. 本机 loopback HTTP test server：Chat Completions 请求/响应、工具选项、重定向阻止。
-3. Benchmark verifier 单测：正负产物、源文件 hash、负约束 trace 和 CSV 金额逻辑。
+3. Benchmark verifier 单测：正负产物、源文件 hash、负约束 trace、CSV 金额逻辑及库存补货数量/文件边界。
 4. Benchmark runner 假模型测试：成功/失败判分、Shell gating、目录隔离、错误分类、报告和权限。
 
 完整运行：

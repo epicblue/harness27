@@ -121,7 +121,7 @@ python benchmark/runner.py --case case_04_csv_reconciliation
 python benchmark/runner.py --repeat 3
 ```
 
-若本地模型服务要求 API key，使用 `HARNESS27_API_KEY` 环境变量。每个用例有独立 fixture、任务、元数据（能力类别/难度/技能）和客观 verifier；当前覆盖配置抽取、否定约束、代码修复、CSV 多文件对账。报告记录 runner/Agent/客户端/工具的 SHA-256 指纹，以及每个用例输入（提示词、fixture、元数据、verifier）的 SHA-256 指纹，便于确认不同运行是否评测了同一版本。结果按用例、类别、难度和技能汇总，包括 verifier 成功率、Agent 完成率、轮数、工具错误、耗时和服务返回的 token 用量。Verifier pass/fail 才计入能力成功率；接口/协议/verifier 异常和跳过会单独统计、不计入该分母。技能标签可重叠，各技能成功率不可相加成总分。重复运行可观察该小型用例集上的稳定性，但服务端未必支持可复现采样。
+若本地模型服务要求 API key，使用 `HARNESS27_API_KEY` 环境变量。每个用例有独立 fixture、任务、元数据（能力类别/难度/技能）和客观 verifier；当前覆盖配置抽取、否定约束、代码修复、CSV 多文件对账和库存补货计划。报告记录 runner/Agent/客户端/工具的 SHA-256 指纹，以及每个用例输入（提示词、fixture、元数据、verifier）的 SHA-256 指纹，便于确认不同运行是否评测了同一版本。结果按用例、类别、难度和技能汇总，包括 verifier 成功率、Agent 完成率、轮数、工具错误、耗时和服务返回的 token 用量。Verifier pass/fail 才计入能力成功率；接口/协议/verifier 异常和跳过会单独统计、不计入该分母。技能标签可重叠，各技能成功率不可相加成总分。重复运行可观察该小型用例集上的稳定性，但服务端未必支持可复现采样。
 
 默认工作区使用唯一临时目录，评测后清理；`--keep-workspaces` 可保留以便复盘。JSON 报告默认写到 `.harness27/benchmark/results/`（权限受限，且已被 Git 忽略），保存逐用例指标、汇总和 verifier 输出；不保存完整对话、工具参数或推理轨迹。自定义路径：`--report ./my-run.json`。
 
@@ -133,7 +133,7 @@ python benchmark/runner.py --case case_03_pytest_repair --allow-shell
 
 **高风险：** `--allow-shell` 会自动批准模型生成的任意 Shell 命令，Shell 使用当前用户权限且不是沙箱。只应在没有凭据、无网络并有 CPU/内存/磁盘限制的外部隔离容器中启用；不要把此选项当作安全隔离。Shell 只会出现在元数据允许的用例中，敏感文件约束用例始终禁用 Shell。
 
-这套四用例是早期 smoke suite，不是代表性行业基准；不同任务、模型模板、量化、采样和推理服务配置都会影响结果。服务端权重校验、量化、tokenizer/chat template/tool parser 版本目前不会由 API 自动探测；跨运行比较时需自行记录部署参数。报告只反映当前配置和这些具体用例，不能据此宣称 27B 模型普遍具备或不具备某种能力。当前仓库**尚未在实际 27B 模型上完成端到端评测**，尚无实测成功率。
+这套五用例是早期 smoke suite，不是代表性行业基准；不同任务、模型模板、量化、采样和推理服务配置都会影响结果。服务端权重校验、量化、tokenizer/chat template/tool parser 版本目前不会由 API 自动探测；跨运行比较时需自行记录部署参数。报告只反映当前配置和这些具体用例，不能据此宣称 27B 模型普遍具备或不具备某种能力。当前仓库**尚未在实际 27B 模型上完成端到端评测**，尚无实测成功率。
 
 ## 测试
 
@@ -141,7 +141,7 @@ python benchmark/runner.py --case case_03_pytest_repair --allow-shell
 python -m unittest discover -s tests -v
 ```
 
-测试不依赖模型权重，也不访问互联网；包含模拟多轮 Agent、本机分析器、真实回环 HTTP 测试服务、benchmark runner 和各用例 verifier。覆盖文件审批、路径穿越/符号链接、硬链接覆写保护、无效工具参数、调用结构验证、预算、读文件截断、Shell 超时、远程 URL/重定向拒绝，以及敏感文件访问尝试、脱敏过程报告、问卷关联、benchmark 汇总、评测工作区保护和 Markdown 本地链接/围栏检查。
+测试不依赖模型权重，也不访问互联网；包含模拟多轮 Agent、本机分析器、真实回环 HTTP 测试服务、benchmark runner 和各用例 verifier。覆盖文件审批、路径穿越/符号链接、硬链接覆写保护、无效工具参数、调用结构验证、预算、读文件截断、Shell 超时、远程 URL/重定向拒绝，以及敏感文件访问尝试、脱敏过程报告、问卷关联、benchmark 汇总、库存补货 verifier 的输入/数量边界、评测工作区保护和 Markdown 本地链接/围栏检查。
 
 ## 代码结构
 

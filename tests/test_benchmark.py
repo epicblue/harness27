@@ -8,6 +8,7 @@ from benchmark.cases.case_01_read_extract.verify import verify as verify_case_01
 from benchmark.cases.case_02_negative_constraint.verify import verify as verify_case_02
 from benchmark.cases.case_03_pytest_repair.verify import verify as verify_case_03
 from benchmark.cases.case_04_csv_reconciliation.verify import verify as verify_case_04
+from benchmark.cases.case_05_warehouse_replenishment.verify import verify as verify_case_05
 
 
 CASES = Path(__file__).resolve().parents[1] / "benchmark" / "cases"
@@ -76,6 +77,42 @@ class BenchmarkVerificationTests(unittest.TestCase):
             expected[1]["paid_amount"] = 319.50  # pending payment must not be counted
             (ws / "reconciliation.json").write_text(json.dumps(expected))
             self.assertFalse(verify_case_04(ws))
+
+    def test_case_05_warehouse_replenishment_verifier(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ws = Path(tmpdir)
+            self.assertFalse(verify_case_05(ws))
+            self.copy_fixture("case_05_warehouse_replenishment", ws)
+            expected = [
+                {"sku": "SKU-A", "on_hand": 12, "open_order_units": 13,
+                 "available_units": 25, "target_stock": 40, "recommended_order_qty": 15},
+                {"sku": "SKU-B", "on_hand": 5, "open_order_units": 7,
+                 "available_units": 12, "target_stock": 20, "recommended_order_qty": 8},
+                {"sku": "SKU-D", "on_hand": 0, "open_order_units": 0,
+                 "available_units": 0, "target_stock": 12, "recommended_order_qty": 12},
+                {"sku": "SKU-F", "on_hand": 8, "open_order_units": 4,
+                 "available_units": 12, "target_stock": 16, "recommended_order_qty": 4},
+            ]
+            target = ws / "reorder_plan.json"
+            target.write_text(json.dumps(expected))
+            self.assertTrue(verify_case_05(ws))
+
+            invalid = [dict(row) for row in expected]
+            invalid[0]["recommended_order_qty"] = True
+            target.write_text(json.dumps(invalid))
+            self.assertFalse(verify_case_05(ws))
+
+            target.write_text(json.dumps(expected))
+            (ws / "notes.txt").write_text("unexpected extra output")
+            self.assertFalse(verify_case_05(ws))
+
+            (ws / "notes.txt").unlink()
+            (ws / "scratch").mkdir()
+            self.assertFalse(verify_case_05(ws))
+            (ws / "scratch").rmdir()
+
+            (ws / "stock_levels.csv").write_text("sku,on_hand,target_stock\nSKU-A,12,999\n")
+            self.assertFalse(verify_case_05(ws))
 
 
 if __name__ == "__main__":

@@ -118,7 +118,34 @@ python benchmark/runner.py \
 
 Verifier 校验 JSON 字段集合、金额、付款状态、排序、重复 invoice id、源 CSV hash 及工作区文件集合。`--repeat 3` 有助于发现不同 trial 的格式/计算不稳定；四个 synthetic invoice 仍远不足以证明模型能可靠处理真实财务账目。真实数据应先脱敏，验收应使用业务系统独立生成的预期结果。
 
-## 场景四：修复 Python bug 并运行测试
+## 场景四：根据库存与在途采购制定补货清单
+
+**实际需求：** 仓库运营人员结合当前库存和未到货采购单，找出需要补货的 SKU，避免把已收货或已取消的采购单重复算作在途库存。
+
+```bash
+python benchmark/runner.py \
+  --model local-27b \
+  --case case_05_warehouse_replenishment \
+  --repeat 3 \
+  --keep-workspaces
+```
+
+该用例使用合成的 `stock_levels.csv` 和 `purchase_orders.csv`，不是任何真实客户或仓库数据；只生成建议文件，不连接 ERP 或自动下单。它只把状态严格等于 `open`、且 SKU 匹配的采购数量计入在途量；`received`、`cancelled` 和库存表之外的 SKU 都忽略。可用库存为 `on_hand + open_order_units`，建议量为 `max(target_stock - available_units, 0)`；只输出建议量为正的 SKU，不推测包装倍数或额外安全库存。
+
+**期望产物 `reorder_plan.json`：**
+
+```json
+[
+  {"sku": "SKU-A", "on_hand": 12, "open_order_units": 13, "available_units": 25, "target_stock": 40, "recommended_order_qty": 15},
+  {"sku": "SKU-B", "on_hand": 5, "open_order_units": 7, "available_units": 12, "target_stock": 20, "recommended_order_qty": 8},
+  {"sku": "SKU-D", "on_hand": 0, "open_order_units": 0, "available_units": 0, "target_stock": 12, "recommended_order_qty": 12},
+  {"sku": "SKU-F", "on_hand": 8, "open_order_units": 4, "available_units": 12, "target_stock": 16, "recommended_order_qty": 4}
+]
+```
+
+Verifier 校验 JSON 的精确字段和整数类型、数量、唯一 SKU 与排序，确认两份输入的 SHA-256 未变，并且只新增 `reorder_plan.json`。此 fixture 适合测试多文件读取、状态筛选和算术，不代表生产库存预测；真实系统还需处理单位、在途到货日期、供应商最小起订量、缺货风险等业务规则，并由库存系统或业务人员复核。`--repeat 3` 只用于观察模型在这个合成小样例上的波动，不是模型实测结论。
+
+## 场景五：修复 Python bug 并运行测试
 
 **实际需求：** 在不修改测试的前提下修复平均值函数对空数组的处理，并确认回归测试通过。
 
@@ -138,7 +165,7 @@ python benchmark/runner.py \
 
 若只是想评测代码理解、不想启用 Shell，可在独立副本上使用主 CLI 的文件工具修复文件，再由人工或 CI 在安全环境运行测试；此时测试执行和 verifier 不由 Harness 保证。
 
-## 场景五：本地项目只读巡检与变更报告
+## 场景六：本地项目只读巡检与变更报告
 
 这是一个主 CLI 示例，不是内置 benchmark case。先将要检查的文本文件复制到专用工作区，再要求模型返回有证据的报告，不允许写入：
 
@@ -183,4 +210,5 @@ python -m harness27 \
 | 配置字段提取并结构化输出 | `benchmark/runner.py --case case_01_read_extract` | 否 | 是 |
 | 限制敏感数据读取并依赖分析 | `benchmark/runner.py --case case_02_negative_constraint` | 永久禁用 | 是，包含 trace 检查 |
 | 多文件 CSV 汇总 | `benchmark/runner.py --case case_04_csv_reconciliation` | 否 | 是 |
+| 库存与在途采购核算 | `benchmark/runner.py --case case_05_warehouse_replenishment` | 否 | 是 |
 | 编辑代码并调用测试命令 | 隔离环境中的 case 03 或 CLI | 是 | case 03 有固定 verifier |

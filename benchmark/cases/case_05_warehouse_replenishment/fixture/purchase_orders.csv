@@ -1,0 +1,10 @@
+po_id,sku,quantity,status
+PO-1001,SKU-A,10,open
+PO-1002,SKU-A,3,open
+PO-1003,SKU-B,7,open
+PO-1004,SKU-C,2,open
+PO-1005,SKU-D,12,received
+PO-1006,SKU-D,4,cancelled
+PO-1007,SKU-E,5,open
+PO-1008,SKU-F,4,open
+PO-1009,SKU-UNKNOWN,99,open

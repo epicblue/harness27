@@ -1,0 +1,7 @@
+{
+  "title": "结合库存与在途采购生成补货建议",
+  "category": "operations_planning",
+  "difficulty": "medium",
+  "skills": ["csv_parsing", "multi_file_reasoning", "inventory_planning", "constraint_following", "structured_output"],
+  "shell": "disabled"
+}

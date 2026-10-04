@@ -48,6 +48,17 @@ class DocumentationTests(unittest.TestCase):
         errors = [error for path in MARKDOWN_FILES for error in markdown_errors(path)]
         self.assertEqual(errors, [], "\n".join(errors))
 
+    def test_all_benchmark_cases_are_listed_in_task_and_benchmark_docs(self):
+        cases_dir = ROOT / "benchmark" / "cases"
+        case_names = sorted(path.name for path in cases_dir.iterdir()
+                            if path.is_dir() and path.name.startswith("case_"))
+        for doc_path in (ROOT / "docs" / "BENCHMARK_GUIDE.md",
+                         ROOT / "docs" / "USE_CASES.md"):
+            content = doc_path.read_text(encoding="utf-8")
+            for case_name in case_names:
+                with self.subTest(document=doc_path.name, case=case_name):
+                    self.assertIn(case_name, content)
+
 
 if __name__ == "__main__":
     unittest.main()

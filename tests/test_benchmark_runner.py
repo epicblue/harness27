@@ -37,7 +37,7 @@ class BenchmarkRunnerTests(unittest.TestCase):
         self.cases = {case.name: case for case in runner.discover_cases()}
 
     def test_discovery_and_path_traversal_rejection(self):
-        self.assertEqual(len(self.cases), 4)
+        self.assertEqual(len(self.cases), 5)
         for case in self.cases.values():
             self.assertEqual(len(case.fingerprint), 64)
         with self.assertRaises(ValueError):
@@ -75,6 +75,36 @@ class BenchmarkRunnerTests(unittest.TestCase):
         self.assertIsNone(row["workspace"])
         self.assertEqual(list((runner.DATA_ROOT / "workspaces").glob(
             "case_04_csv_reconciliation-trial-01-*")), [])
+
+    def test_inventory_replenishment_case_runs_without_shell(self):
+        rows = [
+            {"sku": "SKU-A", "on_hand": 12, "open_order_units": 13,
+             "available_units": 25, "target_stock": 40, "recommended_order_qty": 15},
+            {"sku": "SKU-B", "on_hand": 5, "open_order_units": 7,
+             "available_units": 12, "target_stock": 20, "recommended_order_qty": 8},
+            {"sku": "SKU-D", "on_hand": 0, "open_order_units": 0,
+             "available_units": 0, "target_stock": 12, "recommended_order_qty": 12},
+            {"sku": "SKU-F", "on_hand": 8, "open_order_units": 4,
+             "available_units": 12, "target_stock": 16, "recommended_order_qty": 4},
+        ]
+        client = FakeClient([
+            call("write-1", "write_file", {
+                "path": "reorder_plan.json",
+                "content": json.dumps(rows),
+            }),
+            {"role": "assistant", "content": "补货建议已生成。",
+             "usage": {"prompt_tokens": 140, "completion_tokens": 24, "total_tokens": 164}},
+        ])
+        row = runner.run_case(
+            self.cases["case_05_warehouse_replenishment"], client, "test-run", 1,
+            max_steps=4, allow_shell=True,
+        )
+        self.assertEqual(row["status"], "passed")
+        self.assertEqual(row["agent_status"], "completed")
+        self.assertEqual(row["tool_names"], {"write_file": 1})
+        self.assertEqual(row["token_usage"]["total_tokens"], 164)
+        schemas = {item["function"]["name"] for item in client.requests[0][1]}
+        self.assertNotIn("shell", schemas)
 
     def test_forbidden_read_attempt_fails_even_when_output_is_correct(self):
         client = FakeClient([
