@@ -2,7 +2,7 @@
 
 本方案面向 Harness27 的上手、任务执行、审批体验、评测和文档流程改进。它提供一套低成本、可离线运行的混合方法：**客观任务指标 + 每任务短问卷 + 可选访谈**。目的是发现流程瓶颈，不是监视个人，也不把主观满意度当成模型能力或正确率。
 
-当前仓库没有遥测/问卷采集服务。建议先手动或在本机整理脱敏摘要，不要为了收集数据而默认上传轨迹或增加后台遥测。
+Harness CLI 已为每次运行写本地 JSONL 审计轨迹；它含敏感内容，不等同于可共享的数据集。新增的[本地运行记录与过程分析工具](ANALYTICS.md)可在本机把轨迹转换为脱敏任务指标，并可通过 `session_id` 关联问卷；它不上传数据，也不会把原始内容导出到分析报告。
 
 ## 1. 先定义改进问题
 
@@ -51,17 +51,18 @@
 ### 任务摘要表（每行一个任务尝试）
 
 ```csv
-study_id,session_id,participant_code,run_date_utc,harness_commit,model_config_id,task_id,task_category,task_outcome,independent_verification,elapsed_seconds,agent_steps,tool_calls,tool_errors,write_approval_requests,write_approvals,write_denials,shell_enabled,friction_tags
+study_id,session_id,participant_code,run_date_utc,harness_commit,config_id,task_id,task_category,task_outcome,independent_verification,elapsed_seconds,agent_steps,tool_calls,tool_errors,approval_requests,approval_approvals,approval_denials,shell_enabled,friction_tags
 ```
 
 字段约定：
 
-- `session_id` 使用随机 ID；`participant_code` 可选，若无需纵向比较则不收集。
+- `session_id` 使用 CLI 轨迹文件名（去掉 `.jsonl`）；`participant_code` 可选，若无需纵向比较则不收集。
 - `task_outcome` 使用 `completed`、`partial`、`failed`、`aborted` 等预先约定的值；服务/协议异常另加 `infrastructure_error`，不要误记成模型任务失败。
 - `independent_verification` 表示 `passed`、`failed`、`not_available` 等独立验证结果；用户“觉得做对了”不能替代它。
 - `elapsed_seconds`、轮数和工具计数按同一口径记录；如果是人工估计，应注明来源/估计方式。
-- `friction_tags` 从固定标签中多选，例如 `setup`、`tool_call`、`approval`、`latency`、`docs`、`reporting`、`safety_concern`、`other`。
-- 不能可靠获得的指标留空并标记原因；不要为了填满表格而解析、导出或长期保存原始内容。
+- `approval_requests` / `approval_approvals` / `approval_denials` 仅统计当前 CLI trace 中显式记录的审批回调决策；旧轨迹没有 `approval` 字段时，不应推断批准次数。
+- `friction_tags` 使用固定代码多选：`setup`、`tool_call`、`file_ops`、`approval`、`latency_timeout`、`budget`、`docs`、`result_validation`、`safety_privacy`、`none`、`other`。问卷 CSV 用分号分隔多个代码。
+- 不能可靠获得的指标留空并标记原因；不要为了填满表格而解析、导出或长期保存原始内容。当前 CLI 分析器可直接统计模型轮数、工具耗时/错误和明确记录的审批结果；无法从日志可靠取得的值不要猜填。
 
 **不要收集：**原始任务提示词、完整模型回答、文件内容、Shell 命令/工具参数、reasoning、API key、绝对文件路径、完整 JSONL 轨迹或真实客户资料。若为了独立验证必须检查产物，应在本机受控环境检查，只汇总通过/失败和必要的错误类别。
 
@@ -139,9 +140,28 @@ study_id,session_id,participant_code,run_date_utc,harness_commit,model_config_id
 
 - [ ] 任务、workspace 和表单都不含真实凭据/客户数据；Shell 测试已在外部隔离环境中设计。
 - [ ] 参与者知道目的、字段、访问者、保存期限、退出方式，且同意自愿参与。
-- [ ] 默认不采集原始轨迹、提示词、文件内容、工具参数、reasoning 或身份信息。
+- [ ] 流程改进数据集和问卷不复制/导出原始轨迹、提示词、文件内容、工具参数、reasoning 或身份信息；CLI 本地审计轨迹仍需单独按敏感数据管理。
 - [ ] 数据表保存在受限本地或组织批准的存储位置；问卷与任何身份映射表分离。
 - [ ] 预先写好安全停止条件、数据删除日期和改进负责人。
 - [ ] 结果按任务/流程汇总，不用于给参与者个人排名或绩效打分。
 
 本方案是可试点的内部改进设计，不构成法律、隐私或研究伦理审查意见。涉及员工研究、客户数据或外部发表时，应先遵守组织政策并完成所需审查。
+
+## 9. 用内置分析器闭合采集流程
+
+每次 CLI 运行结束后，终端会显示 `.harness27/runs/` 下的轨迹路径；把文件名（去掉 `.jsonl`）填入问卷 `session_id`。`task_outcome` 可填 `completed`、`partial`、`failed`、`aborted`、`infrastructure_error`；`independent_verification` 可填 `passed`、`failed`、`not_available`、`pending`。建议使用如下固定列名导出问卷 CSV，开放题可另存在受限本机文件中，不要与汇总报告混合：
+
+```csv
+session_id,task_id,task_category,config_id,task_outcome,independent_verification,q1_start_clarity,q2_progress_visibility,q3_approval_control,q4_result_checkability,q5_effort_time,q6_troubleshooting,q7_reuse,friction_tags
+```
+
+体验量表按问卷顺序对应 `q1`–`q7`，填写 `1`–`5` 或空值；摩擦标签用分号分隔，并映射为分析器支持的代码：环境/启动=`setup`、模型工具调用=`tool_call`、文件操作=`file_ops`、审批=`approval`、等待/超时=`latency_timeout`、预算=`budget`、文档=`docs`、结果验证=`result_validation`、安全/隐私=`safety_privacy`、无=`none`、其他=`other`。
+
+```bash
+python -m harness27.analytics \
+  --runs-dir .harness27/runs \
+  --survey-csv ./private-survey.csv \
+  --output .harness27/analytics/iteration-01.json
+```
+
+报告可用于比较任务状态、时间线、工具错误和问卷评分；`completed` 不是独立验证通过。详细参数、报告字段及隐私边界见[本地运行记录与过程分析工具说明](ANALYTICS.md)。

@@ -50,6 +50,7 @@ class Tools:
         return path
 
     def execute(self, name, args):
+        approval_decision = "not_requested" if isinstance(name, str) and name in {"write_file", "shell"} else None
         try:
             spec = next((s["function"]["parameters"] for s in self.schemas
                          if s["function"]["name"] == name), None)
@@ -60,8 +61,11 @@ class Tools:
                 raise ValueError("工具参数字段或类型错误")
             if name == "shell":
                 if not self.approve(name, args):
-                    return {"ok": False, "error": "用户拒绝执行命令"}
-                return self.shell(args["command"])
+                    return {"ok": False, "error": "用户拒绝执行命令", "approval": "denied"}
+                approval_decision = "approved"
+                result = self.shell(args["command"])
+                result["approval"] = approval_decision
+                return result
             path = self.path(args["path"])
             if name == "list_files":
                 entries = []
@@ -83,7 +87,8 @@ class Tools:
             if len(data) > MAX_BYTES:
                 raise ValueError("写入内容超过 32768 字节")
             if not self.approve(name, args):
-                return {"ok": False, "error": "用户拒绝写入"}
+                return {"ok": False, "error": "用户拒绝写入", "approval": "denied"}
+            approval_decision = "approved"
             path = self.path(args["path"])
             if path.exists() and not path.is_file():
                 raise ValueError("不是普通文件")
@@ -97,9 +102,12 @@ class Tools:
             finally:
                 if os.path.exists(temporary):
                     os.unlink(temporary)
-            return {"ok": True, "bytes_written": len(data)}
+            return {"ok": True, "bytes_written": len(data), "approval": approval_decision}
         except (OSError, ValueError) as exc:
-            return {"ok": False, "error": str(exc)}
+            result = {"ok": False, "error": str(exc)}
+            if approval_decision is not None:
+                result["approval"] = approval_decision
+            return result
 
     def shell(self, command):
         # A tempfile prevents unbounded RAM use. Use a container for disk/process limits.

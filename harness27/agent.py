@@ -67,12 +67,15 @@ class Agent:
                         raise ModelError("模型返回了空答案且没有工具调用")
                     return self.finish("completed", message["content"], step)
                 for call in calls:
+                    tool_started = time.monotonic()
                     fn = call["function"]
                     try:
                         args = json.loads(fn["arguments"])
                     except (ValueError, TypeError):
                         args = fn["arguments"]
                         result = {"ok": False, "error": "工具参数不是有效 JSON 对象"}
+                        if fn["name"] in {"write_file", "shell"}:
+                            result["approval"] = "not_requested"
                     else:
                         result = self.tools.execute(fn["name"], args)
                     # Keep the attempted arguments in the audit event. Besides
@@ -80,7 +83,8 @@ class Agent:
                     # distinguish a forbidden access attempt from a safe listing.
                     self.trace("tool", {"step": step, "id": call["id"],
                                         "name": fn["name"], "arguments": args,
-                                        "result": result})
+                                        "result": result,
+                                        "seconds": time.monotonic() - tool_started})
                     messages.append({"role": "tool", "tool_call_id": call["id"],
                                      "content": json.dumps(result, ensure_ascii=False)})
             return self.finish("step_limit", "已达到最大模型轮数；任务可能尚未完成。", self.max_steps)

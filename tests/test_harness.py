@@ -48,11 +48,15 @@ class HarnessTests(unittest.TestCase):
         self.assertEqual(client.requests[1][-1]["tool_call_id"], "call1")
         tool_event = next(data for event, data in self.events if event == "tool")
         self.assertEqual(tool_event["arguments"], {"path": "hello.txt", "content": "你好"})
+        self.assertEqual(tool_event["result"]["approval"], "approved")
+        self.assertGreaterEqual(tool_event["seconds"], 0)
         self.assertEqual(self.events[-1][0], "finish")
 
     def test_malformed_arguments_recover(self):
         _, client = self.run_agent([tool_call("not json"), {"role": "assistant", "content": "无法执行"}])
         self.assertFalse(json.loads(client.requests[1][-1]["content"])["ok"])
+        tool_event = next(data for event, data in self.events if event == "tool")
+        self.assertEqual(tool_event["result"]["approval"], "not_requested")
 
     def test_invalid_call_rejected_before_execution(self):
         message = tool_call()
@@ -98,7 +102,9 @@ class HarnessTests(unittest.TestCase):
 
     def test_denied_and_disabled(self):
         tools = Tools(self.root)
-        self.assertFalse(tools.execute("write_file", {"path": "no", "content": "x"})["ok"])
+        denied_write = tools.execute("write_file", {"path": "no", "content": "x"})
+        self.assertFalse(denied_write["ok"])
+        self.assertEqual(denied_write["approval"], "denied")
         self.assertFalse(tools.execute("shell", {"command": "echo nope"})["ok"])
         self.assertFalse((self.root / "no").exists())
         self.assertFalse(tools.execute("read_file", {"path": 123})["ok"])

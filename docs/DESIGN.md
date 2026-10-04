@@ -484,7 +484,9 @@ HTTP client 约束仅保护 Harness 的模型请求路径；本机推理服务�
 
 ## 5. CLI 状态和可观察性
 
-CLI 创建 `.harness27/runs/<UTC>-<id>.jsonl`，以 JSONL 逐事件 flush；主要 event 为 `start`、`assistant`、`tool`、`finish`、`error`。assistant event 可包含 reasoning、finish reason 和 usage；tool event 包含 step、call id、工具名、解析后的参数（或无效 JSON 原文）和工具结果。日志以 POSIX 0600 创建，数据保留和清理由使用方负责。
+CLI 创建 `.harness27/runs/<UTC>-<id>.jsonl`，以 JSONL 逐事件 flush；每条记录包含 trace schema version 和时间戳，主要 event 为 `start`、`assistant`、`tool`、`finish`、`error`。`start` 可携带经过校验的 task/category/config 标签；assistant event 可包含 reasoning、finish reason 和 usage；tool event 包含 step、call id、工具名、解析后的参数（或无效 JSON 原文）、结果、耗时和显式审批决策。日志以 POSIX 0600 创建，数据保留和清理由使用方负责。
+
+`harness27/analytics.py` 本地消费 CLI JSONL，按白名单生成脱敏的 session 指标、事件时间线和可选问卷汇总；不导出任务文本、回答、工具参数/结果、模型别名或 reasoning，也不联网。它不能从 trace 判断 task correctness；需要独立 verifier。报告默认放在被 Git 忽略的 `.harness27/analytics/`。使用方法见[本地运行记录与过程分析工具](ANALYTICS.md)。
 
 Agent 的结束状态和进程退出码不等价于独立任务正确性：`completed` 只表示模型产生了最终文本，不是验收结果。Agent 状态是 `completed`、`context_limit`、`length_truncated`、`step_limit`；客户端/Agent异常走 CLI error path。CLI exit code 详见[使用说明](USER_GUIDE.md#6-运行预算和结束状态)。
 

@@ -72,6 +72,9 @@ harness27 --model local-27b '查看工作目录里的文件'
 | `--model` | 必填 | 推理服务中注册的模型名；只是服务端别名，不校验模型参数规模。 |
 | `--base-url` | `http://127.0.0.1:8000/v1` | 本机 OpenAI 兼容 API 的 base URL。 |
 | `--workspace` | `workspace` | 文件工具的根目录；目录不存在时会创建。 |
+| `--task-id` | 不设置 | 可选、非敏感的任务标签，用于本地记录分析分组。 |
+| `--task-category` | 不设置 | 可选、非敏感的任务类别标签，用于汇总比较。 |
+| `--config-id` | 不设置 | 可选的服务配置标签；只能用短标签，勿填写 URL 或密钥。 |
 | `--max-steps` | `12` | 单个任务允许的最大模型响应轮数。 |
 | `--max-context-chars` | `100000` | Agent 消息历史的字符预算，不等于 tokenizer token 数。 |
 | `--max-tokens` | `2048` | 每次模型响应的最大生成 token 数。 |
@@ -132,9 +135,9 @@ Shell 可访问 workspace 以外的文件、继承的环境变量、当前用户
 
 ## 7. 轨迹和敏感信息
 
-每次 CLI 运行都会在当前工作目录下创建 `.harness27/runs/<UTC 时间>-<随机 ID>.jsonl`，逐事件 flush。轨迹可能包含：完整任务、模型文本回答、原生工具调用参数、工具结果/文件内容、模型提供的 reasoning 内容、usage 和结束状态。POSIX 下文件以 `0600` 权限创建，运行轨迹默认已被 `.gitignore` 排除。
+每次 CLI 运行都会在当前工作目录下创建 `.harness27/runs/<UTC 时间>-<随机 ID>.jsonl`，逐事件 flush，事件含 trace schema version、时间戳和运行过程；工具事件也记录工具耗时。可用 `--task-id`、`--task-category`、`--config-id` 附加通过格式校验的非敏感短标签。轨迹可能包含：完整任务、模型文本回答、原生工具调用参数、工具结果/文件内容、模型提供的 reasoning 内容、usage 和结束状态。POSIX 下文件以 `0600` 权限创建，运行轨迹默认已被 `.gitignore` 排除。
 
-轨迹不支持自动恢复执行。使用前评估其中的个人数据、密钥片段、源码和模型输出；按组织要求保护、备份或删除。benchmark JSON 报告与 Agent 的 JSONL 轨迹是不同产物；报告不保存完整对话或工具参数，详情见[能力评测手册](BENCHMARK_GUIDE.md)。
+轨迹不支持自动恢复执行。使用前评估其中的个人数据、密钥片段、源码和模型输出；按组织要求保护、备份或删除。benchmark JSON 报告与 Agent 的 JSONL 轨迹是不同产物；报告不保存完整对话或工具参数，详情见[能力评测手册](BENCHMARK_GUIDE.md)。如需在本机分析任务状态、事件时间线、工具错误和问卷结果，可运行[本地运行记录与过程分析工具](ANALYTICS.md)；分析报告会过滤原始内容，但输入轨迹仍是敏感数据。
 
 ## 8. Python API
 
@@ -187,4 +190,4 @@ python -m unittest discover -s tests -v
 - **日志中含文件内容**：这是审计轨迹设计的一部分；限制轨迹目录访问并按需清理。不要将它提交到 Git。
 - **“离线”并不等于全机断网**：HTTP 客户端只连 loopback；模型服务本身和启用的 Shell 必须另行用网络策略约束。
 
-端到端实际任务示例见[使用场景实例](USE_CASES.md)；详细故障排查见[故障排查手册](TROUBLESHOOTING.md)，Shell 隔离和运行产物保护见[安全部署操作说明](SECURITY_OPERATIONS.md)；评测流程、用例范围、报告结构和可比性限制见[能力评测手册](BENCHMARK_GUIDE.md)。
+端到端实际任务示例见[使用场景实例](USE_CASES.md)；详细故障排查见[故障排查手册](TROUBLESHOOTING.md)，Shell 隔离和运行产物保护见[安全部署操作说明](SECURITY_OPERATIONS.md)；任务数据采集设计见[流程改进方案](PROCESS_IMPROVEMENT.md)，逐次轨迹分析见[本地分析工具说明](ANALYTICS.md)；评测流程、用例范围、报告结构和可比性限制见[能力评测手册](BENCHMARK_GUIDE.md)。
