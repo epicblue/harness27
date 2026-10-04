@@ -80,7 +80,7 @@ Runner 的 base URL 与主 harness 一样，只能是 `127.0.0.1`、`::1` 等回
 - 默认：在 `.harness27/benchmark/workspaces/` 内创建临时目录，verifier 运行后清理。
 - 使用 `--keep-workspaces`：保留到 `.harness27/benchmark/workspaces/<run_id>/<case>-trial-<NN>/`。
 
-Fixture 复制会拒绝符号链接，忽略 Python `__pycache__`/`.pyc`/`.pyo` 缓存。工作区中的工具仍受 `Tools` 路径规则限制；这不是对启用 Shell 的隔离保证。
+Fixture 复制会拒绝符号链接，忽略 Python `__pycache__`/`.pyc`/`.pyo` 缓存。工作区中的工具仍受 `Tools` 路径规则限制；这不是对启用 Shell 的隔离保证。外部隔离环境的部署基线和运行前后核对清单见[安全部署操作说明](SECURITY_OPERATIONS.md)。
 
 ## 4. 当前用例目录和能力标签
 

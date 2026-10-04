@@ -187,4 +187,4 @@ python -m unittest discover -s tests -v
 - **日志中含文件内容**：这是审计轨迹设计的一部分；限制轨迹目录访问并按需清理。不要将它提交到 Git。
 - **“离线”并不等于全机断网**：HTTP 客户端只连 loopback；模型服务本身和启用的 Shell 必须另行用网络策略约束。
 
-端到端实际任务示例见[使用场景实例](USE_CASES.md)；评测流程、用例范围、报告结构和可比性限制见[能力评测手册](BENCHMARK_GUIDE.md)。
+端到端实际任务示例见[使用场景实例](USE_CASES.md)；详细故障排查见[故障排查手册](TROUBLESHOOTING.md)，Shell 隔离和运行产物保护见[安全部署操作说明](SECURITY_OPERATIONS.md)；评测流程、用例范围、报告结构和可比性限制见[能力评测手册](BENCHMARK_GUIDE.md)。
