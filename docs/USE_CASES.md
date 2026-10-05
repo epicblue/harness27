@@ -596,14 +596,14 @@ python -m unittest discover -s tests -v
 | 制造批次质量复核（合成测量数据） | `benchmark/runner.py --case case_09_quality_inspection_review` | 否 | 是，检查规格边界与抽样状态 |
 | 生产工单物料齐套核对（合成 allocation 快照） | `benchmark/runner.py --case case_10_production_material_readiness` | 否 | 是，检查 BOM 需求与短缺 |
 | 组件批次追溯（合成数据，仅生成范围报告） | `benchmark/runner.py --case case_11_material_lot_traceability` | 否 | 是，检查批次去重与发运关联 |
-| 班次 OEE 指标汇总（合成计数） | `benchmark/runner.py --case case_12_oee_shift_report` | 否 | 是，核对 OEE 公式与精度 |
-| 设备校准到期复核（合成资产） | `benchmark/runner.py --case case_13_calibration_due_review` | 否 | 是，核对日期边界和状态 |
-| 维修事件分级（合成设备事件） | `benchmark/runner.py --case case_14_maintenance_event_triage` | 否 | 是，核对政策优先级 |
-| 工单换型顺序计划（仅计划） | `benchmark/runner.py --case case_15_changeover_sequence_plan` | 否 | 是，核对排序与切换时间 |
-| 采购订单来料数量核对（合成收货） | `benchmark/runner.py --case case_16_supplier_receipt_reconciliation` | 否 | 是，核对收货、拒收与差异 |
-| 包装标签主数据审核（合成标签） | `benchmark/runner.py --case case_17_packaging_label_audit` | 否 | 是，核对标签字段差异 |
-| 报废原因码汇总（合成事件） | `benchmark/runner.py --case case_18_scrap_reason_summary` | 否 | 是，核对聚合与未知代码 |
-| 设备停机时长统计（合成事件） | `benchmark/runner.py --case case_19_downtime_duration_summary` | 否 | 是，核对 UTC 时间差 |
-| 成品纸箱与托盘估算（仅计划） | `benchmark/runner.py --case case_20_packout_estimate` | 否 | 是，核对整箱、尾箱与托盘数 |
-| 需求与产线能力差额（合成快照） | `benchmark/runner.py --case case_21_capacity_gap_review` | 否 | 是，核对节拍和分钟缺口 |
+| [班次 OEE 指标汇总（合成计数）](use_cases/case_12_oee_shift_report.md) | `benchmark/runner.py --case case_12_oee_shift_report` | 否 | 是，核对 OEE 公式与精度 |
+| [设备校准到期复核（合成资产）](use_cases/case_13_calibration_due_review.md) | `benchmark/runner.py --case case_13_calibration_due_review` | 否 | 是，核对日期边界和状态 |
+| [维修事件分级（合成设备事件）](use_cases/case_14_maintenance_event_triage.md) | `benchmark/runner.py --case case_14_maintenance_event_triage` | 否 | 是，核对政策优先级 |
+| [工单换型顺序计划（仅计划）](use_cases/case_15_changeover_sequence_plan.md) | `benchmark/runner.py --case case_15_changeover_sequence_plan` | 否 | 是，核对排序与切换时间 |
+| [采购订单来料数量核对（合成收货）](use_cases/case_16_supplier_receipt_reconciliation.md) | `benchmark/runner.py --case case_16_supplier_receipt_reconciliation` | 否 | 是，核对收货、拒收与差异 |
+| [包装标签主数据审核（合成标签）](use_cases/case_17_packaging_label_audit.md) | `benchmark/runner.py --case case_17_packaging_label_audit` | 否 | 是，核对标签字段差异 |
+| [报废原因码汇总（合成事件）](use_cases/case_18_scrap_reason_summary.md) | `benchmark/runner.py --case case_18_scrap_reason_summary` | 否 | 是，核对聚合与未知代码 |
+| [设备停机时长统计（合成事件）](use_cases/case_19_downtime_duration_summary.md) | `benchmark/runner.py --case case_19_downtime_duration_summary` | 否 | 是，核对 UTC 时间差 |
+| [成品纸箱与托盘估算（仅计划）](use_cases/case_20_packout_estimate.md) | `benchmark/runner.py --case case_20_packout_estimate` | 否 | 是，核对整箱、尾箱与托盘数 |
+| [需求与产线能力差额（合成快照）](use_cases/case_21_capacity_gap_review.md) | `benchmark/runner.py --case case_21_capacity_gap_review` | 否 | 是，核对节拍和分钟缺口 |
 | 编辑代码并调用测试命令 | 隔离环境中的 case 03 或 CLI | 是 | case 03 有固定 verifier |

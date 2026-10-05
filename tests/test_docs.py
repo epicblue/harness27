@@ -6,7 +6,7 @@ from urllib.parse import unquote
 
 
 ROOT = Path(__file__).resolve().parents[1]
-MARKDOWN_FILES = [ROOT / "README.md", *sorted((ROOT / "docs").glob("*.md"))]
+MARKDOWN_FILES = [ROOT / "README.md", *sorted((ROOT / "docs").rglob("*.md"))]
 FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
 LINK_RE = re.compile(r"!?\[[^\]]*\]\(([^)]+)\)")
 
@@ -140,6 +140,35 @@ class DocumentationTests(unittest.TestCase):
                     with self.subTest(criterion=criterion["id"]):
                         self.assertIn(criterion["id"], use_cases)
                         self.assertTrue(criterion["requirement"])
+
+    def test_manufacturing_cases_have_dedicated_story_pages(self):
+        stories_dir = ROOT / "docs" / "use_cases"
+        index = (stories_dir / "README.md").read_text(encoding="utf-8")
+        overview = (ROOT / "docs" / "USE_CASES.md").read_text(encoding="utf-8")
+        for number in range(12, 22):
+            prefix = f"case_{number:02d}_"
+            case_dir = next((ROOT / "benchmark" / "cases").glob(prefix + "*"))
+            metadata = json.loads((case_dir / "case.json").read_text(encoding="utf-8"))
+            story_path = stories_dir / f"{case_dir.name}.md"
+            with self.subTest(case=case_dir.name):
+                self.assertTrue(story_path.is_file())
+                content = story_path.read_text(encoding="utf-8")
+                story = metadata["user_story"]
+                for field in ("as_a", "i_want", "so_that"):
+                    self.assertIn(story[field], content)
+                self.assertEqual(metadata["shell"], "disabled")
+                self.assertIn("review-only", content)
+                self.assertIn("不代表实际部署或 27B 模型评测结果", content)
+                verifier = (case_dir / "verify.py").read_text(encoding="utf-8")
+                output_match = re.search(r'^OUTPUT_FILENAME = "([^\"]+)"$', verifier, re.MULTILINE)
+                self.assertIsNotNone(output_match)
+                self.assertIn(output_match.group(1), content)
+                for criterion in metadata["acceptance_criteria"]:
+                    self.assertIn(criterion["requirement"], content)
+                for out_of_scope in metadata["out_of_scope"]:
+                    self.assertIn(out_of_scope, content)
+                self.assertIn(f"({case_dir.name}.md)", index)
+                self.assertIn(f"use_cases/{case_dir.name}.md", overview)
 
     def test_support_ticket_story_and_acceptance_criteria_are_documented(self):
         case_dir = ROOT / "benchmark" / "cases" / "case_07_support_ticket_triage"
