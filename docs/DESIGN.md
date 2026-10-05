@@ -619,6 +619,7 @@ Agent 的结束状态和进程退出码不等价于独立任务正确性：`comp
 ```text
 benchmark/
   runner.py
+  compare.py
   cases/
     case_<id>/
       case.json
@@ -665,6 +666,12 @@ Runner 自动创建唯一 run id 和 workspace，不覆写已存在的固定 ben
 每个 case 的 SHA-256 指纹由 case metadata、prompt、verifier 和 fixture 文件/目录相对路径及内容组成；临时 Python bytecode 不计入。Harness 指纹覆盖 `benchmark/runner.py`、`harness27/agent.py`、`client.py`、`tools.py`。报告还记录 Python 版本及客户端可见参数。
 
 这些 fingerprint 帮助识别本仓库评测材料和执行逻辑的变更，但不会验证 API 后面的模型 checkpoint、量化、serving engine、tokenizer 或 parser。报告使用 model alias/base URL；实验比较仍需人工保存推理服务构建和权重元信息。
+
+### 6.5 跨运行报告对比
+
+`benchmark/compare.py` 接收两份 schema version 1 Runner JSON 报告。它只读取做对比所需的 run ID、指纹、状态与数值指标，并以显式 allowlist 生成结果；不会复制未知字段、原始提示词、模型回答、reasoning、工具参数/结果、verifier 输出或配置值。比较输出列出变化的配置字段名，但不输出模型别名或服务地址。
+
+case 的定义指纹或 harness 指纹任一不同，工具保留两侧指标但不计算该 case 的差值；配置值变化会显示字段名并作为解释差异的提醒。聚合差值仅计算指纹匹配的共同用例，结果为描述性统计，不做显著性检验。文件输出以私有权限原子写入，默认为 stdout。
 
 ## 7. 失败分类与诊断原则
 

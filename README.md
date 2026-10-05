@@ -125,6 +125,8 @@ python benchmark/runner.py --repeat 3
 
 默认工作区使用唯一临时目录，评测后清理；`--keep-workspaces` 可保留以便复盘。JSON 报告默认写到 `.harness27/benchmark/results/`（权限受限，且已被 Git 忽略），保存逐用例指标、汇总和 verifier 输出；不保存完整对话、工具参数或推理轨迹。自定义路径：`--report ./my-run.json`。
 
+完成两次评测后，可用 `python benchmark/compare.py --baseline before.json --candidate after.json` 比较匹配用例的验证率、完成率和耗时。比较导出只含白名单统计，不包含提示词、回答、reasoning、工具内容、verifier 文本或配置值；用例/harness 指纹变化时会阻止对应差值计算。
+
 代码修复用例要求运行测试，标记为 `shell=required`，未明确授权时会跳过；需加 `--allow-shell` 才会运行：
 
 ```bash
@@ -141,7 +143,7 @@ python benchmark/runner.py --case case_03_pytest_repair --allow-shell
 python -m unittest discover -s tests -v
 ```
 
-测试不依赖模型权重，也不访问互联网；包含模拟多轮 Agent、本机分析器、真实回环 HTTP 测试服务、benchmark runner 和各用例 verifier。覆盖文件审批、路径穿越/符号链接、硬链接覆写保护、无效工具参数、调用结构验证、预算、读文件截断、Shell 超时、远程 URL/重定向拒绝，以及敏感文件访问尝试、脱敏过程报告、问卷关联、benchmark 汇总、库存补货 verifier 的输入/数量边界、软件安装计划的版本/依赖排序、支持工单优先级/SLA/时区计算、会议室容量/设备/预订冲突检查、制造质检规格边界/抽样状态、工单 BOM 物料短缺、组件批次追溯、班次 OEE 计算、校准到期与维修分级、换型时间、来料收货核对、包装标签差异、报废/停机汇总、托盘估算和产能缺口与禁用 Shell 检查、评测工作区保护和 Markdown 本地链接/围栏检查。
+测试不依赖模型权重，也不访问互联网；包含模拟多轮 Agent、本机分析器、真实回环 HTTP 测试服务、benchmark runner 和各用例 verifier。覆盖文件审批、路径穿越/符号链接、硬链接覆写保护、无效工具参数、调用结构验证、预算、读文件截断、Shell 超时、远程 URL/重定向拒绝，以及敏感文件访问尝试、脱敏过程报告、问卷关联、benchmark 汇总与脱敏报告对比、库存补货 verifier 的输入/数量边界、软件安装计划的版本/依赖排序、支持工单优先级/SLA/时区计算、会议室容量/设备/预订冲突检查、制造质检规格边界/抽样状态、工单 BOM 物料短缺、组件批次追溯、班次 OEE 计算、校准到期与维修分级、换型时间、来料收货核对、包装标签差异、报废/停机汇总、托盘估算和产能缺口与禁用 Shell 检查、评测工作区保护和 Markdown 本地链接/围栏检查。
 
 ## 代码结构
 
@@ -155,10 +157,12 @@ harness27/
   __main__.py   python -m harness27 入口
 benchmark/
   runner.py     串行评测、客观验证与 JSON 汇总
+  compare.py    两次报告的隐私安全结构化对比
   cases/        fixture、任务元数据和独立 verifier
 tests/
   test_harness.py
   test_benchmark.py
+  test_benchmark_compare.py
   test_benchmark_runner.py
   test_analytics.py
 ```

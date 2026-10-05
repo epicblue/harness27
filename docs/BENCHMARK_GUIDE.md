@@ -143,6 +143,23 @@ Token 统计来自兼容服务返回的 usage 字段，并将 Agent 各轮数值
 
 Runner 完成所有 case 但有 task verifier 失败时，进程仍可以返回 `0`；用 JSON 报告判断任务正确率。Runner/API/verifier 出现执行错误时返回 `1`，客户端配置错误返回 `2`，中断返回 `130`；非法参数由 argparse 以 `2` 退出。
 
+### 5.3 比较两次评测报告
+
+完成两次评测后，可用 `benchmark/compare.py` 对比相同用例的客观结果：
+
+```bash
+python benchmark/compare.py \
+  --baseline .harness27/benchmark/results/baseline.json \
+  --candidate .harness27/benchmark/results/candidate.json \
+  --output .harness27/benchmark/results/comparison.json
+```
+
+该工具只读取已有的本地 JSON 报告，不连接模型服务。不传 `--output` 时 JSON 写到 stdout；指定文件则原子写入，POSIX 文件权限为 `0600`。输出文件不能与任一输入报告同路径。
+
+对比器只导出白名单结构化指标（通过/失败数、成功率、完成率、错误数、步数与耗时），不复制原始提示词、模型回答、reasoning、工具参数/结果、verifier 输出、配置值或 base URL。配置不同只列出变更字段名。某个 case 只有在两份报告的 case fingerprint 和 harness fingerprint 均一致时才标记为可比较；不匹配时仍并排列出各自指标，但不计算差值。汇总只合并两次运行中匹配且定义未变的 case。
+
+该工具只给出描述性差异，不做统计显著性检验，也不能据小型 smoke suite 推断模型的普遍能力。采样、服务端版本、量化、模板等配置发生变化时，请先查看 `changed_config_keys` 和兼容性告警，再解释差值。
+
 ## 6. 把结果变成可信的能力边界
 
 建议采用以下实验流程：

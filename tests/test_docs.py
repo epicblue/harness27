@@ -49,6 +49,14 @@ class DocumentationTests(unittest.TestCase):
         errors = [error for path in MARKDOWN_FILES for error in markdown_errors(path)]
         self.assertEqual(errors, [], "\n".join(errors))
 
+    def test_privacy_safe_benchmark_comparison_is_documented(self):
+        guide = (ROOT / "docs" / "BENCHMARK_GUIDE.md").read_text(encoding="utf-8")
+        self.assertIn("benchmark/compare.py", guide)
+        self.assertIn("--baseline", guide)
+        self.assertIn("--candidate", guide)
+        self.assertIn("不复制原始提示词、模型回答、reasoning", guide)
+        self.assertIn("harness fingerprint 均一致时才标记为可比较", guide)
+
     def test_all_benchmark_cases_are_listed_in_task_and_benchmark_docs(self):
         cases_dir = ROOT / "benchmark" / "cases"
         case_names = sorted(path.name for path in cases_dir.iterdir()
