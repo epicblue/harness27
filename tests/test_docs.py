@@ -170,6 +170,13 @@ class DocumentationTests(unittest.TestCase):
                 self.assertIn(f"({case_dir.name}.md)", index)
                 self.assertIn(f"use_cases/{case_dir.name}.md", overview)
 
+        sequence_diagram = (stories_dir / "case_17_packaging_label_audit.md").read_text(
+            encoding="utf-8")
+        self.assertIn("```mermaid\nsequenceDiagram", sequence_diagram)
+        self.assertIn("Runner->>Verifier: verify(workspace, tool_trace)", sequence_diagram)
+        self.assertIn("Agent->>Tools: write_file(label_audit.json)", sequence_diagram)
+        self.assertIn("不是实体标签检查或产品放行", sequence_diagram)
+
     def test_support_ticket_story_and_acceptance_criteria_are_documented(self):
         case_dir = ROOT / "benchmark" / "cases" / "case_07_support_ticket_triage"
         metadata = json.loads((case_dir / "case.json").read_text(encoding="utf-8"))
