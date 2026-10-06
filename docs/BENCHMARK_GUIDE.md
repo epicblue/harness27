@@ -156,7 +156,7 @@ python benchmark/compare.py \
 
 该工具只读取已有的本地 JSON 报告，不连接模型服务。不传 `--output` 时 JSON 写到 stdout；指定文件则原子写入，POSIX 文件权限为 `0600`。输出文件不能与任一输入报告同路径。
 
-对比器只导出白名单结构化指标（通过/失败数、成功率、完成率、错误数、步数与耗时），不复制原始提示词、模型回答、reasoning、工具参数/结果、verifier 输出、配置值或 base URL。配置不同只列出变更字段名。某个 case 只有在两份报告的 case fingerprint 和 harness fingerprint 均一致时才标记为可比较；不匹配时仍并排列出各自指标，但不计算差值。汇总只合并两次运行中匹配且定义未变的 case。
+对比器只导出白名单结构化指标（通过/失败数、成功率、完成率、错误数、步数、耗时及服务报告的 token 数），不复制原始提示词、模型回答、reasoning、工具参数/结果、verifier 输出、配置值或 base URL。Token 汇总仅覆盖存在非零 usage 的 trial，并显示观测数；缺失 usage 不代表真实 token 消耗为零。配置不同只列出变更字段名。两份输入报告都必须为 `completed`；`running`、`interrupted` 或 `error` 报告仍显示已有指标，但不计算差值。某个 case 只有在两份完整报告的 case fingerprint 和 harness fingerprint 均一致时才标记为可比较；不匹配时仍并排列出各自指标，但不计算差值。汇总只合并两次运行中匹配且定义未变的 case。
 
 该工具只给出描述性差异，不做统计显著性检验，也不能据小型 smoke suite 推断模型的普遍能力。采样、服务端版本、量化、模板等配置发生变化时，请先查看 `changed_config_keys` 和兼容性告警，再解释差值。
 

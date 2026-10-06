@@ -669,9 +669,9 @@ Runner 自动创建唯一 run id 和 workspace，不覆写已存在的固定 ben
 
 ### 6.5 跨运行报告对比
 
-`benchmark/compare.py` 接收两份 schema version 1 Runner JSON 报告。它只读取做对比所需的 run ID、指纹、状态与数值指标，并以显式 allowlist 生成结果；不会复制未知字段、原始提示词、模型回答、reasoning、工具参数/结果、verifier 输出或配置值。比较输出列出变化的配置字段名，但不输出模型别名或服务地址。
+`benchmark/compare.py` 接收两份 schema version 1 Runner JSON 报告。它只读取做对比所需的 run ID、指纹、状态、数值指标和服务报告的 token usage，并以显式 allowlist 生成结果；不会复制未知字段、原始提示词、模型回答、reasoning、工具参数/结果、verifier 输出或配置值。比较输出列出变化的配置字段名，但不输出模型别名或服务地址。
 
-case 的定义指纹或 harness 指纹任一不同，工具保留两侧指标但不计算该 case 的差值；配置值变化会显示字段名并作为解释差异的提醒。聚合差值仅计算指纹匹配的共同用例，结果为描述性统计，不做显著性检验。文件输出以私有权限原子写入，默认为 stdout。
+两份 Runner 报告都必须为 `completed`；未完成/中断报告只展示已有指标，不产生差值。case 的定义指纹或 harness 指纹任一不同，工具也会保留两侧指标但不计算该 case 的差值；配置值变化会显示字段名并作为解释差异的提醒。聚合差值仅计算完整、指纹匹配的共同用例，结果为描述性统计，不做显著性检验。文件输出以私有权限原子写入，默认为 stdout。
 
 ## 7. 失败分类与诊断原则
 

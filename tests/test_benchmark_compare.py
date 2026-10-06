@@ -16,7 +16,7 @@ CASE_NAME = "case_12_oee_shift_report"
 
 
 def result(*, trial, status, fingerprint=CASE_A, agent_status="completed",
-           steps=2, elapsed=1.0, tool_errors=0, **extra):
+           steps=2, elapsed=1.0, tool_errors=0, token_usage=None, **extra):
     row = {
         "case": CASE_NAME,
         "fingerprint_sha256": fingerprint,
@@ -26,15 +26,19 @@ def result(*, trial, status, fingerprint=CASE_A, agent_status="completed",
         "steps_used": steps,
         "elapsed_seconds": elapsed,
         "tool_errors": tool_errors,
+        "token_usage": token_usage or {
+            "prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0,
+        },
     }
     row.update(extra)
     return row
 
 
-def report(run_id, rows, *, harness=HARNESS_A, config=None, **extra):
+def report(run_id, rows, *, harness=HARNESS_A, config=None, status="completed", **extra):
     data = {
         "schema_version": 1,
         "run_id": run_id,
+        "status": status,
         "harness_fingerprint_sha256": harness,
         "config": config or {"model": "local-model", "temperature": 0.2},
         "results": rows,
@@ -46,13 +50,17 @@ def report(run_id, rows, *, harness=HARNESS_A, config=None, **extra):
 class BenchmarkCompareTests(unittest.TestCase):
     def test_compares_matched_cases_and_reports_deltas(self):
         baseline = report("baseline-001", [
-            result(trial=1, status="passed", steps=2, elapsed=4.0),
+            result(trial=1, status="passed", steps=2, elapsed=4.0,
+                   token_usage={"prompt_tokens": 100, "completion_tokens": 20, "total_tokens": 120}),
             result(trial=2, status="failed", agent_status="step_limit",
-                   steps=4, elapsed=8.0, tool_errors=1),
+                   steps=4, elapsed=8.0, tool_errors=1,
+                   token_usage={"prompt_tokens": 90, "completion_tokens": 10, "total_tokens": 100}),
         ])
         candidate = report("candidate-002", [
-            result(trial=1, status="passed", steps=2, elapsed=2.0),
-            result(trial=2, status="passed", steps=3, elapsed=4.0),
+            result(trial=1, status="passed", steps=2, elapsed=2.0,
+                   token_usage={"prompt_tokens": 110, "completion_tokens": 30, "total_tokens": 140}),
+            result(trial=2, status="passed", steps=3, elapsed=4.0,
+                   token_usage={"prompt_tokens": 100, "completion_tokens": 20, "total_tokens": 120}),
         ], config={"model": "candidate-model", "temperature": 0.2})
 
         comparison = compare_reports(baseline, candidate)
@@ -63,6 +71,10 @@ class BenchmarkCompareTests(unittest.TestCase):
         self.assertEqual(case["delta"]["success_rate_percentage_points"], 50.0)
         self.assertEqual(case["delta"]["verified_passes"], 1)
         self.assertEqual(case["delta"]["mean_elapsed_seconds"], -3.0)
+        self.assertEqual(case["baseline"]["token_usage"]["total_tokens"], 220)
+        self.assertEqual(case["candidate"]["token_usage"]["total_tokens"], 260)
+        self.assertEqual(case["delta"]["token_usage"]["total_tokens"], 40)
+        self.assertEqual(case["delta"]["token_usage"]["mean_total_tokens"], 20.0)
         self.assertEqual(comparison["compatibility"]["changed_config_keys"], ["model"])
         self.assertEqual(comparison["matched_summary"]["baseline"]["attempts"], 2)
 
@@ -91,6 +103,35 @@ class BenchmarkCompareTests(unittest.TestCase):
         self.assertFalse(case["comparable"])
         self.assertFalse(comparison["compatibility"]["harness_unchanged"])
         self.assertIsNone(case["delta"]["verified_passes"])
+
+    def test_missing_usage_is_not_reported_as_zero_tokens(self):
+        comparison = compare_reports(
+            report("baseline-001", [result(trial=1, status="passed")]),
+            report("candidate-002", [result(trial=1, status="passed")]),
+        )
+        metrics = comparison["case_comparisons"][0]["baseline"]["token_usage"]
+        self.assertEqual(metrics["observed_trials"], 0)
+        self.assertIsNone(metrics["total_tokens"])
+        self.assertIsNone(comparison["case_comparisons"][0]["delta"]["token_usage"]["total_tokens"])
+        self.assertTrue(any("Token usage may be unavailable" in warning
+                            for warning in comparison["warnings"]))
+
+    def test_incomplete_reports_show_metrics_but_do_not_claim_deltas(self):
+        baseline = report("baseline-001", [result(trial=1, status="passed")],
+                          status="interrupted")
+        candidate = report("candidate-002", [result(trial=1, status="failed")])
+
+        comparison = compare_reports(baseline, candidate)
+        case = comparison["case_comparisons"][0]
+        self.assertEqual(comparison["baseline_report_status"], "interrupted")
+        self.assertEqual(comparison["candidate_report_status"], "completed")
+        self.assertFalse(comparison["compatibility"]["both_reports_completed"])
+        self.assertEqual(case["baseline"]["attempts"], 1)
+        self.assertEqual(case["candidate"]["attempts"], 1)
+        self.assertFalse(case["comparable"])
+        self.assertIsNone(case["delta"]["verified_passes"])
+        self.assertTrue(any("partial results" in warning
+                            for warning in comparison["warnings"]))
 
     def test_allowlisted_export_omits_raw_content_and_unknown_fields(self):
         sentinels = [
@@ -135,6 +176,10 @@ class BenchmarkCompareTests(unittest.TestCase):
         ])
         with self.assertRaisesRegex(ValueError, "duplicate case/trial"):
             compare_reports(duplicate_trials, report("candidate-002", []))
+
+        invalid_status = report("baseline-001", [], status="in_progress")
+        with self.assertRaisesRegex(ValueError, "invalid run status"):
+            compare_reports(invalid_status, report("candidate-002", []))
 
     def test_cli_writes_a_private_comparison_file(self):
         with tempfile.TemporaryDirectory() as tmpdir:

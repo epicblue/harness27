@@ -125,7 +125,7 @@ python benchmark/runner.py --repeat 3
 
 默认工作区使用唯一临时目录，评测后清理；`--keep-workspaces` 可保留以便复盘。JSON 报告默认写到 `.harness27/benchmark/results/`（权限受限，且已被 Git 忽略），保存逐用例指标、汇总和 verifier 输出；不保存完整对话、工具参数或推理轨迹。自定义路径：`--report ./my-run.json`。
 
-完成两次评测后，可用 `python benchmark/compare.py --baseline before.json --candidate after.json` 比较匹配用例的验证率、完成率和耗时。比较导出只含白名单统计，不包含提示词、回答、reasoning、工具内容、verifier 文本或配置值；用例/harness 指纹变化时会阻止对应差值计算。
+完成两次评测后，可用 `python benchmark/compare.py --baseline before.json --candidate after.json` 比较匹配用例的验证率、完成率、耗时和服务报告的 token 数。两份报告都须为 `completed` 才计算差值；比较导出只含白名单统计，不包含提示词、回答、reasoning、工具内容、verifier 文本或配置值。用例/harness 指纹变化时会阻止对应差值计算。
 
 代码修复用例要求运行测试，标记为 `shell=required`，未明确授权时会跳过；需加 `--allow-shell` 才会运行：
 

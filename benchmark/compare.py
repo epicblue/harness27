@@ -20,6 +20,7 @@ CASE_NAME = re.compile(r"case_[a-z0-9_]+\Z")
 RUN_ID = re.compile(r"[A-Za-z0-9_.:-]{1,80}\Z")
 SHA256 = re.compile(r"[0-9a-f]{64}\Z")
 VALID_STATUSES = {"passed", "failed", "error", "skipped"}
+VALID_RUN_STATUSES = {"running", "completed", "interrupted", "error"}
 CONFIG_KEYS = (
     "python_version",
     "model",
@@ -64,6 +65,9 @@ def _normalize_report(report, label):
     run_id = report.get("run_id")
     if not isinstance(run_id, str) or not RUN_ID.fullmatch(run_id):
         raise ValueError(f"{label} has an invalid run_id")
+    run_status = report.get("status")
+    if not isinstance(run_status, str) or run_status not in VALID_RUN_STATUSES:
+        raise ValueError(f"{label} has an invalid run status")
 
     harness_fingerprint = report.get("harness_fingerprint_sha256")
     if harness_fingerprint is not None and (
@@ -101,6 +105,13 @@ def _normalize_report(report, label):
             raise ValueError(f"{label} contains a duplicate case/trial pair")
         seen_trials.add(trial_key)
 
+        token_usage = row.get("token_usage", {})
+        if not isinstance(token_usage, dict):
+            raise ValueError(f"{row_label} token_usage must be a JSON object")
+        safe_token_usage = {
+            key: _nonnegative_int(token_usage.get(key, 0), f"{row_label} {key}")
+            for key in ("prompt_tokens", "completion_tokens", "total_tokens")
+        }
         safe_row = {
             "status": status,
             "completed": row.get("agent_status") == "completed",
@@ -108,6 +119,7 @@ def _normalize_report(report, label):
             "elapsed_seconds": _nonnegative_number(
                 row.get("elapsed_seconds"), f"{row_label} elapsed_seconds"),
             "tool_errors": _nonnegative_int(row.get("tool_errors"), f"{row_label} tool_errors"),
+            "token_usage": safe_token_usage,
         }
         case_group = by_case.setdefault(case_name, {"fingerprints": set(), "rows": []})
         case_group["fingerprints"].add(fingerprint)
@@ -115,6 +127,7 @@ def _normalize_report(report, label):
 
     return {
         "run_id": run_id,
+        "run_status": run_status,
         "harness_fingerprint": harness_fingerprint,
         "config": safe_config,
         "by_case": by_case,
@@ -146,9 +159,22 @@ def _metrics(rows):
     executed_rows = [row for row in rows if row["status"] != "skipped"]
     executed = len(executed_rows)
     completed = sum(row["completed"] for row in executed_rows)
+    usage_rows = [
+        row for row in executed_rows
+        if any(row["token_usage"].values())
+    ]
 
     def mean(key):
         return round(sum(row[key] for row in executed_rows) / executed, 3) if executed else None
+
+    token_totals = {
+        key: sum(row["token_usage"][key] for row in usage_rows) if usage_rows else None
+        for key in ("prompt_tokens", "completion_tokens", "total_tokens")
+    }
+    token_totals["observed_trials"] = len(usage_rows)
+    token_totals["mean_total_tokens"] = (
+        round(token_totals["total_tokens"] / len(usage_rows), 2) if usage_rows else None
+    )
 
     return {
         "executed": executed,
@@ -161,6 +187,7 @@ def _metrics(rows):
         "errors": errors,
         "skipped": skipped,
         "tool_errors": sum(row["tool_errors"] for row in executed_rows),
+        "token_usage": token_totals,
         "mean_steps": mean("steps_used"),
         "mean_elapsed_seconds": mean("elapsed_seconds"),
     }
@@ -172,6 +199,22 @@ def _percentage_point_delta(before, after, key):
     if before_rate is None or after_rate is None:
         return None
     return round((after_rate - before_rate) * 100, 2)
+
+
+def _token_usage_delta(before, after):
+    before_usage = before["token_usage"]
+    after_usage = after["token_usage"]
+    deltas = {
+        "observed_trials": after_usage["observed_trials"] - before_usage["observed_trials"],
+    }
+    for key in ("prompt_tokens", "completion_tokens", "total_tokens", "mean_total_tokens"):
+        before_value = before_usage[key]
+        after_value = after_usage[key]
+        deltas[key] = (
+            round(after_value - before_value, 2)
+            if before_value is not None and after_value is not None else None
+        )
+    return deltas
 
 
 def _delta(before, after):
@@ -189,10 +232,14 @@ def _delta(before, after):
             if before["mean_elapsed_seconds"] is not None
             and after["mean_elapsed_seconds"] is not None else None
         ),
+        "token_usage": _token_usage_delta(before, after),
     }
 
 
 def _compare_normalized_reports(baseline, candidate):
+    both_reports_completed = (
+        baseline["run_status"] == "completed" and candidate["run_status"] == "completed"
+    )
     if baseline["harness_fingerprint"] is None or candidate["harness_fingerprint"] is None:
         harness_unchanged = None
     else:
@@ -231,7 +278,9 @@ def _compare_normalized_reports(baseline, candidate):
             )
             if not definition_unchanged:
                 changed_definitions.append(case_name)
-            comparable = definition_unchanged and harness_unchanged is True
+            comparable = (
+                definition_unchanged and harness_unchanged is True and both_reports_completed
+            )
 
         before_metrics = _metrics(before_group["rows"]) if before_group else None
         after_metrics = _metrics(after_group["rows"]) if after_group else None
@@ -240,6 +289,13 @@ def _compare_normalized_reports(baseline, candidate):
             "success_rate_percentage_points": None,
             "completion_rate_percentage_points": None,
             "mean_elapsed_seconds": None,
+            "token_usage": {
+                "observed_trials": None,
+                "prompt_tokens": None,
+                "completion_tokens": None,
+                "total_tokens": None,
+                "mean_total_tokens": None,
+            },
         }
         case_comparisons.append({
             "case": case_name,
@@ -259,24 +315,38 @@ def _compare_normalized_reports(baseline, candidate):
         "Comparison is descriptive only; it does not establish statistical significance or general model capability.",
         "The export includes allowlisted metrics only; it omits prompts, answers, reasoning, tool content, verifier text and configuration values.",
     ]
+    if not both_reports_completed:
+        warnings.append(
+            "Both reports must have status 'completed' to calculate deltas; partial results are shown without comparison."
+        )
     if harness_unchanged is False:
         warnings.append("Harness fingerprints differ; no case-level deltas are marked comparable.")
     elif harness_unchanged is None:
         warnings.append("A harness fingerprint is missing; no case-level deltas are marked comparable.")
     if changed_config_keys:
         warnings.append("Evaluation configuration differs in: " + ", ".join(changed_config_keys) + ".")
+    if (baseline_summary["token_usage"]["observed_trials"] < baseline_summary["executed"]
+            or candidate_summary["token_usage"]["observed_trials"] < candidate_summary["executed"]):
+        warnings.append(
+            "Token usage may be unavailable when the service reports zero; token aggregates use observed trials only."
+        )
     if baseline_only or candidate_only:
         warnings.append("Only cases present in both reports are considered for matched comparisons.")
     if changed_definitions:
         warnings.append("Changed or internally inconsistent case definitions are excluded from deltas.")
     if not any(row["comparable"] for row in case_comparisons):
-        warnings.append("No cases have both an unchanged case definition and an unchanged harness fingerprint.")
+        warnings.append(
+            "No case deltas pass the report-completion, case-definition and harness checks."
+        )
 
     return {
         "comparison_schema_version": 1,
         "baseline_run_id": baseline["run_id"],
         "candidate_run_id": candidate["run_id"],
+        "baseline_report_status": baseline["run_status"],
+        "candidate_report_status": candidate["run_status"],
         "compatibility": {
+            "both_reports_completed": both_reports_completed,
             "harness_unchanged": harness_unchanged,
             "changed_config_keys": changed_config_keys,
             "common_case_count": len(common_names),
